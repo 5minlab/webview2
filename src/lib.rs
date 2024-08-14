@@ -1528,17 +1528,35 @@ fn to_hresult<T>(r: Result<T>) -> HRESULT {
     }
 }
 
+use std::collections::VecDeque;
+use std::sync::{Arc, RwLock};
+
+pub type WebView2DataWrapper = Arc<RwLock<Option<WebView2Data>>>;
+
+struct WebView2Data {
+    controller: Controller,
+
+    // Callbacks
+    message_obj: Box<host_object::Variant>,
+    on_message: Option<fn(*const c_char) -> ()>,
+
+    queue: VecDeque<String>,
+}
+
 #[no_mangle]
-pub unsafe extern "C" fn webview2_open() -> usize {
+pub unsafe extern "C" fn webview2_open(url_ptr: *const u16, len: u32) -> usize {
     let top = 0;
     let left = 0;
+
+    let url_data : &[u16] = std::slice::from_raw_parts(url_ptr, len as usize);
+    let url_str = String::from_utf16_lossy(url_data);
 
     use winapi::um::winuser::*;
 
     let hwnd = unsafe { GetActiveWindow() };
 
-    let controller1: Box<Cell<Option<Controller>>> = Box::new(Cell::new(None));
-    let ptr = controller1.as_ptr();
+    let wrapper: WebView2DataWrapper = Arc::new(RwLock::new(None));
+    let ptr = WebView2DataWrapper::into_raw(wrapper.clone());
 
     let _ = Environment::builder().build(move |env| {
         env.expect("env")
@@ -1562,31 +1580,39 @@ pub unsafe extern "C" fn webview2_open() -> usize {
                 };
 
                 controller.put_bounds(r).expect("put_bounds");
-                w.navigate("https://wikipedia.org").expect("navigate");
+                w.navigate(&url_str).expect("navigate");
                 w.open_dev_tools_window().expect("open_dev_tools_window");
 
-                let mut i32_variant = Box::new(host_object::Variant::from(1234));
+                let mut i32_variant = Box::new(host_object::Variant::from(1));
                 let _ = w
-                    .add_host_object_to_script("i32", &mut i32_variant.0)
+                    .add_host_object_to_script("editor", &mut i32_variant.0)
                     .expect("add_host_object_to_script");
                 std::mem::forget(i32_variant);
 
-                let mut function_with_string_argument_variant =
-                    Box::new(host_object::Variant::from(ManuallyDrop::new(Some(
-                        IDispatch::from(host_object::FunctionWithStringArgument),
-                    ))));
+                let obj = host_object::FunctionWithStringArgument {
+                    data: wrapper.clone(),
+                };
+                let mut message_obj = Box::new(host_object::Variant::from(ManuallyDrop::new(
+                    Some(IDispatch::from(obj)),
+                )));
 
                 let _ = w
-                    .add_host_object_to_script(
-                        "functionWithStringArgument",
-                        &mut function_with_string_argument_variant.0,
-                    )
+                    .add_host_object_to_script("functioncall", &mut message_obj.0)
                     .expect("add_host_object_to_script");
-                std::mem::forget(function_with_string_argument_variant);
 
-                controller1.set(Some(controller));
+                {
+                    let mut guard = wrapper.write().unwrap();
+                    *guard = Some(WebView2Data {
+                        controller,
+                        message_obj,
+                        on_message: None,
 
-                std::mem::forget(controller1);
+                        queue: VecDeque::new(),
+                    });
+                }
+
+                std::mem::forget(wrapper);
+
                 Ok(())
             })
     });
@@ -1596,53 +1622,93 @@ pub unsafe extern "C" fn webview2_open() -> usize {
 
 #[no_mangle]
 pub unsafe extern "C" fn webview2_set_visible(ptr: usize, visible: i32) {
-    let mut controller: Box<Cell<Option<Controller>>> = Box::from_raw(ptr as *mut _);
+    let data: WebView2DataWrapper = Arc::from_raw(ptr as *mut _);
 
-    if let Some(webview_host) = controller.get_mut() {
-        webview_host
-            .put_is_visible(visible != 0)
-            .expect("put_is_visible");
+    {
+        let mut guard = data.write().unwrap();
+        if let Some(data) = guard.as_mut() {
+            data.controller
+                .put_is_visible(visible != 0)
+                .expect("put_is_visible");
+        }
     }
 
-    std::mem::forget(controller);
+    std::mem::forget(data);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn webview2_update_position(ptr: usize, left: i32, top: i32, w: i32, h: i32) {
-    let mut controller: Box<Cell<Option<Controller>>> = Box::from_raw(ptr as *mut _);
-
+    let data: WebView2DataWrapper = Arc::from_raw(ptr as *mut _);
     let r = RECT {
         left,
         top,
         right: w + left,
         bottom: h + top,
     };
-    if let Some(webview_host) = controller.get_mut() {
-        webview_host.put_bounds(r).expect("put_bounds");
+
+    {
+        let mut guard = data.write().unwrap();
+        if let Some(data) = guard.as_mut() {
+            data.controller.put_bounds(r).expect("put_bounds");
+        }
     }
 
-    std::mem::forget(controller);
+    std::mem::forget(data);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn webview2_pull(ptr: usize) -> *const c_char {
+    use std::ffi::CString;
+
+    let data: WebView2DataWrapper = Arc::from_raw(ptr as *mut _);
+
+    let ret = {
+        let mut guard = data.write().unwrap();
+        if let Some(data) = guard.as_mut() {
+            if let Some(s) = data.queue.pop_front() {
+                let c_str = CString::new(s).unwrap();
+                c_str.into_raw()
+            } else {
+                std::ptr::null()
+            }
+        } else {
+            std::ptr::null()
+        }
+    };
+
+    std::mem::forget(data);
+    ret
 }
 
 use std::ffi::{c_char, CStr};
 
 #[no_mangle]
-pub unsafe extern "C" fn webview2_execute_script(ptr: usize, data: *const c_char) {
-    let mut controller: Box<Cell<Option<Controller>>> = Box::from_raw(ptr as *mut _);
-    let script = CStr::from_ptr(data).to_str().unwrap();
+pub unsafe extern "C" fn webview2_execute_script(ptr: usize, script_ptr: *const u16, len: u32) {
+    let data: WebView2DataWrapper = Arc::from_raw(ptr as *mut _);
 
-    if let Some(webview_host) = controller.get_mut() {
-        if let Ok(webview) = webview_host.get_webview() {
-            let _ = webview.execute_script(script, |_| Ok(()));
+    let script_data: &[u16] = std::slice::from_raw_parts(script_ptr, len as usize);
+    let script_str = String::from_utf16_lossy(script_data);
+
+    {
+        let mut guard = data.write().unwrap();
+        if let Some(data) = guard.as_mut() {
+            if let Ok(webview) = data.controller.get_webview() {
+                let _ = webview.execute_script(&script_str, |_| Ok(()));
+            }
         }
     }
 
-    std::mem::forget(controller)
+    std::mem::forget(data);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn webview2_close(ptr: usize) {
-    hide_webview_inner(ptr)
+    let data: WebView2DataWrapper = Arc::from_raw(ptr as *mut _);
+
+    let mut guard = data.write().unwrap();
+    if let Some(data) = guard.as_mut() {
+        data.controller.close().expect("close");
+    }
 }
 
 #[allow(unused)]
@@ -1750,13 +1816,6 @@ fn show_window_inner() {
         }
     });
     */
-}
-
-unsafe fn hide_webview_inner(ptr: usize) {
-    let mut controller: Box<Cell<Option<Controller>>> = Box::from_raw(ptr as *mut _);
-    if let Some(webview_host) = controller.get_mut() {
-        webview_host.close().expect("close");
-    }
 }
 
 #[cfg(test)]

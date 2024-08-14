@@ -1,6 +1,7 @@
+use std::cell::Cell;
 use std::mem::ManuallyDrop;
 use windows::{
-    core::{BSTR},
+    core::BSTR,
     Win32::System::{
         Com::{IDispatch, IDispatch_Impl, ITypeInfo, DISPATCH_FLAGS, DISPPARAMS, EXCEPINFO},
         Variant::{
@@ -64,18 +65,23 @@ impl Drop for Variant {
 }
 
 #[windows::core::implement(IDispatch)]
-pub struct FunctionWithStringArgument;
+pub struct FunctionWithStringArgument {
+    pub data: crate::WebView2DataWrapper,
+}
+
 impl IDispatch_Impl for FunctionWithStringArgument {
     #![allow(non_snake_case)]
     fn GetTypeInfoCount(&self) -> windows::core::Result<u32> {
         Ok(0)
     }
+
     fn GetTypeInfo(&self, _itinfo: u32, _lcid: u32) -> windows::core::Result<ITypeInfo> {
         Err(windows::core::Error::new(
             windows::Win32::Foundation::E_FAIL,
             "GetTypeInfo Error \t\n\r".into(),
         ))
     }
+
     fn GetIDsOfNames(
         &self,
         _riid: *const ::windows::core::GUID,
@@ -86,6 +92,7 @@ impl IDispatch_Impl for FunctionWithStringArgument {
     ) -> windows::core::Result<()> {
         Ok(())
     }
+
     fn Invoke(
         &self,
         _dispidmember: i32,
@@ -103,8 +110,7 @@ impl IDispatch_Impl for FunctionWithStringArgument {
         unsafe {
             dbg!(&rgvarg_0_0.Anonymous.bstrVal);
         }
-        let b_str_val = unsafe { &rgvarg_0_0.Anonymous.bstrVal.to_string() };
-        dbg!(b_str_val);
+        let b_str_val = unsafe { rgvarg_0_0.Anonymous.bstrVal.to_string() };
 
         let pvarresult_0_0 = unsafe { &mut (*pvarresult).Anonymous.Anonymous };
         pvarresult_0_0.vt = VT_BSTR;
@@ -115,7 +121,14 @@ impl IDispatch_Impl for FunctionWithStringArgument {
             )
             .to_string(),
         ));
+
+        {
+            let mut guard = self.data.write().unwrap();
+            if let Some(data) = guard.as_mut() {
+                data.queue.push_front(b_str_val);
+            }
+        }
+
         Ok(())
     }
 }
-
