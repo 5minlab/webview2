@@ -1566,18 +1566,23 @@ pub unsafe extern "C" fn webview2_open() -> usize {
                 w.open_dev_tools_window().expect("open_dev_tools_window");
 
                 let mut i32_variant = Box::new(host_object::Variant::from(1234));
-                let _ = w.add_host_object_to_script("i32", &mut i32_variant.0);
+                let _ = w
+                    .add_host_object_to_script("i32", &mut i32_variant.0)
+                    .expect("add_host_object_to_script");
+                std::mem::forget(i32_variant);
 
                 let mut function_with_string_argument_variant =
                     Box::new(host_object::Variant::from(ManuallyDrop::new(Some(
                         IDispatch::from(host_object::FunctionWithStringArgument),
                     ))));
 
-                w.add_host_object_to_script(
-                    "functionWithStringArgument",
-                    &mut function_with_string_argument_variant.0,
-                )
-                .expect("failed to add object");
+                let _ = w
+                    .add_host_object_to_script(
+                        "functionWithStringArgument",
+                        &mut function_with_string_argument_variant.0,
+                    )
+                    .expect("add_host_object_to_script");
+                std::mem::forget(function_with_string_argument_variant);
 
                 controller1.set(Some(controller));
 
