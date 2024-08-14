@@ -60,11 +60,13 @@ See the `examples` directory, especially the heavily commented `win32` example.
 #![allow(clippy::upper_case_acronyms)]
 #![allow(non_camel_case_types)]
 
+mod host_object;
+
 use com::{interfaces::IUnknown, ComInterface, ComPtr, ComRc};
 use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::io;
-use std::mem::{self, MaybeUninit};
+use std::mem::{self, ManuallyDrop, MaybeUninit};
 use std::path::Path;
 use std::ptr;
 use webview2_sys::*;
@@ -77,6 +79,8 @@ use winapi::shared::winerror::{
     MAKE_HRESULT, SEVERITY_ERROR, SUCCEEDED, S_OK,
 };
 use winapi::um::combaseapi::{CoTaskMemAlloc, CoTaskMemFree};
+use windows::Win32::System::Com::IDispatch;
+use windows::Win32::System::Variant::VARIANT;
 
 static DEFAULT_TARGET_COMPATIBLE_BROWSER_VERSION: &str = "89.0.765";
 
@@ -1011,6 +1015,15 @@ impl WebView {
     );
     remove_event_handler!(remove_new_window_requested);
     get_string!(get_document_title);
+
+    pub fn add_host_object_to_script(&self, name: &str, object: *mut VARIANT) -> Result<()> {
+        let name = name.encode_utf16().collect::<Vec<_>>();
+        check_hresult(unsafe {
+            self.inner
+                .add_host_object_to_script(name.as_ptr(), std::mem::transmute(object))
+        })
+    }
+
     // TODO: add_host_object_to_script ??
     // TODO: remove_host_object_to_script ??
     call!(open_dev_tools_window);
@@ -1512,6 +1525,232 @@ fn to_hresult<T>(r: Result<T>) -> HRESULT {
     match r {
         Ok(_) => S_OK,
         Err(Error { hresult }) => hresult,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn webview2_open() -> usize {
+    let top = 0;
+    let left = 0;
+
+    use winapi::um::winuser::*;
+
+    let hwnd = unsafe { GetActiveWindow() };
+
+    let controller1: Box<Cell<Option<Controller>>> = Box::new(Cell::new(None));
+    let ptr = controller1.as_ptr();
+
+    let _ = Environment::builder().build(move |env| {
+        env.expect("env")
+            .create_controller(hwnd, move |controller| {
+                let controller = controller.expect("create host");
+                let w = controller.get_webview().expect("get_webview");
+
+                let _ = w.get_settings().map(|settings| {
+                    let _ = settings.put_is_status_bar_enabled(false);
+                    let _ = settings.put_are_default_context_menus_enabled(false);
+                    let _ = settings.put_is_zoom_control_enabled(false);
+                    let _ = settings.put_are_host_objects_allowed(true);
+                    let _ = settings.put_are_dev_tools_enabled(true);
+                });
+
+                let r = RECT {
+                    left,
+                    top,
+                    right: left + 500,
+                    bottom: top + 500,
+                };
+
+                controller.put_bounds(r).expect("put_bounds");
+                w.navigate("https://wikipedia.org").expect("navigate");
+                w.open_dev_tools_window().expect("open_dev_tools_window");
+
+                let mut i32_variant = Box::new(host_object::Variant::from(1234));
+                let _ = w.add_host_object_to_script("i32", &mut i32_variant.0);
+
+                let mut function_with_string_argument_variant =
+                    Box::new(host_object::Variant::from(ManuallyDrop::new(Some(
+                        IDispatch::from(host_object::FunctionWithStringArgument),
+                    ))));
+
+                w.add_host_object_to_script(
+                    "functionWithStringArgument",
+                    &mut function_with_string_argument_variant.0,
+                )
+                .expect("failed to add object");
+
+                controller1.set(Some(controller));
+
+                std::mem::forget(controller1);
+                Ok(())
+            })
+    });
+
+    ptr as usize
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn webview2_set_visible(ptr: usize, visible: i32) {
+    let mut controller: Box<Cell<Option<Controller>>> = Box::from_raw(ptr as *mut _);
+
+    if let Some(webview_host) = controller.get_mut() {
+        webview_host
+            .put_is_visible(visible != 0)
+            .expect("put_is_visible");
+    }
+
+    std::mem::forget(controller);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn webview2_update_position(ptr: usize, left: i32, top: i32, w: i32, h: i32) {
+    let mut controller: Box<Cell<Option<Controller>>> = Box::from_raw(ptr as *mut _);
+
+    let r = RECT {
+        left,
+        top,
+        right: w + left,
+        bottom: h + top,
+    };
+    if let Some(webview_host) = controller.get_mut() {
+        webview_host.put_bounds(r).expect("put_bounds");
+    }
+
+    std::mem::forget(controller);
+}
+
+use std::ffi::{c_char, CStr};
+
+#[no_mangle]
+pub unsafe extern "C" fn webview2_execute_script(ptr: usize, data: *const c_char) {
+    let mut controller: Box<Cell<Option<Controller>>> = Box::from_raw(ptr as *mut _);
+    let script = CStr::from_ptr(data).to_str().unwrap();
+
+    if let Some(webview_host) = controller.get_mut() {
+        if let Ok(webview) = webview_host.get_webview() {
+            let _ = webview.execute_script(script, |_| Ok(()));
+        }
+    }
+
+    std::mem::forget(controller)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn webview2_close(ptr: usize) {
+    hide_webview_inner(ptr)
+}
+
+#[allow(unused)]
+fn show_window_inner() {
+    use once_cell::unsync::OnceCell;
+    use std::mem;
+    use std::rc::Rc;
+    use winapi::shared::windef::*;
+    use winapi::um::winuser::*;
+    use winit::dpi::Size;
+    use winit::event::{Event, WindowEvent};
+    use winit::event_loop::{ControlFlow, EventLoop};
+    use winit::platform::windows::WindowExtWindows;
+    use winit::window::WindowBuilder;
+
+    let event_loop = EventLoop::new();
+    let window = WindowBuilder::new()
+        .with_title("WebView2 - winit")
+        .with_inner_size(Size::Logical((1600, 900).into()))
+        .build(&event_loop)
+        .unwrap();
+
+    let controller: Rc<OnceCell<Controller>> = Rc::new(OnceCell::new());
+
+    let create_result = {
+        let controller_clone = controller.clone();
+        let hwnd = window.hwnd() as HWND;
+
+        Environment::builder().build(move |env| {
+            env.expect("env")
+                .create_controller(hwnd, move |controller| {
+                    let controller = controller.expect("create host");
+                    let w = controller.get_webview().expect("get_webview");
+
+                    let _ = w.get_settings().map(|settings| {
+                        let _ = settings.put_is_status_bar_enabled(false);
+                        let _ = settings.put_are_default_context_menus_enabled(false);
+                        let _ = settings.put_is_zoom_control_enabled(false);
+                    });
+
+                    unsafe {
+                        let mut rect = mem::zeroed();
+                        GetClientRect(hwnd, &mut rect);
+                        controller.put_bounds(rect).expect("put_bounds");
+                    }
+
+                    w.navigate("https://wikipedia.org").expect("navigate");
+
+                    controller_clone.set(controller).unwrap();
+                    Ok(())
+                })
+        })
+    };
+    if let Err(e) = create_result {
+        eprintln!(
+            "Failed to create webview environment: {}. Is the new edge browser installed?",
+            e
+        );
+    }
+
+    std::mem::forget(controller);
+    std::mem::forget(window);
+    std::mem::forget(event_loop);
+
+    /*
+    event_loop.run(move |event, _, control_flow| {
+        *control_flow = ControlFlow::Wait;
+
+        match event {
+            Event::WindowEvent { event, .. } => match event {
+                WindowEvent::CloseRequested => {
+                    if let Some(webview_host) = controller.get() {
+                        webview_host.close().expect("close");
+                    }
+                    *control_flow = ControlFlow::Exit;
+                }
+                // Notify the webview when the parent window is moved.
+                WindowEvent::Moved(_) => {
+                    if let Some(webview_host) = controller.get() {
+                        let _ = webview_host.notify_parent_window_position_changed();
+                    }
+                }
+                // Update webview bounds when the parent window is resized.
+                WindowEvent::Resized(new_size) => {
+                    if let Some(webview_host) = controller.get() {
+                        let r = RECT {
+                            left: 0,
+                            top: 0,
+                            right: new_size.width as i32,
+                            bottom: new_size.height as i32,
+                        };
+                        webview_host.put_bounds(r).expect("put_bounds");
+                    }
+                }
+                _ => {}
+            },
+            Event::MainEventsCleared => {
+                // Application update code.
+
+                // Queue a RedrawRequested event.
+                window.request_redraw();
+            }
+            Event::RedrawRequested(_) => {}
+            _ => (),
+        }
+    });
+    */
+}
+
+unsafe fn hide_webview_inner(ptr: usize) {
+    let mut controller: Box<Cell<Option<Controller>>> = Box::from_raw(ptr as *mut _);
+    if let Some(webview_host) = controller.get_mut() {
+        webview_host.close().expect("close");
     }
 }
 
