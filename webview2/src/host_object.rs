@@ -1,14 +1,15 @@
-use std::cell::Cell;
 use std::mem::ManuallyDrop;
 use windows::{
     core::BSTR,
     Win32::System::{
-        Com::{IDispatch, IDispatch_Impl, ITypeInfo, DISPATCH_FLAGS, DISPPARAMS, EXCEPINFO},
+        Com::{IDispatch_Impl, ITypeInfo, DISPATCH_FLAGS, DISPPARAMS, EXCEPINFO},
         Variant::{
             VARENUM, VARIANT, VARIANT_0, VARIANT_0_0, VARIANT_0_0_0, VT_BSTR, VT_DISPATCH, VT_I4,
         },
     },
 };
+
+pub use windows::Win32::System::Com::IDispatch;
 
 // This is a simple usage example. add_host_object_to_script is a mapping of the native [addHostObjectToScript](https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2#addhostobjecttoscript) method of webview2. It requires manual creation of hostobject and memory management. Please use it with caution.
 pub struct Variant(pub VARIANT);
@@ -29,6 +30,7 @@ impl Variant {
         }
     }
 }
+
 impl From<String> for Variant {
     fn from(value: String) -> Variant {
         Variant::new(
@@ -57,16 +59,16 @@ impl From<std::mem::ManuallyDrop<::core::option::Option<IDispatch>>> for Variant
 impl Drop for Variant {
     fn drop(&mut self) {
         match VARENUM(unsafe { self.0.Anonymous.Anonymous.vt.0 }) {
-            VT_BSTR => unsafe { drop(&mut &self.0.Anonymous.Anonymous.Anonymous.bstrVal) },
+            VT_BSTR => unsafe { drop(&self.0.Anonymous.Anonymous.Anonymous.bstrVal) },
             _ => {}
         }
-        unsafe { drop(&mut self.0.Anonymous.Anonymous) }
+        unsafe { drop(&self.0.Anonymous.Anonymous) }
     }
 }
 
 #[windows::core::implement(IDispatch)]
 pub struct FunctionWithStringArgument {
-    pub data: crate::WebView2DataWrapper,
+    pub sender: std::sync::mpsc::Sender<String>,
 }
 
 impl IDispatch_Impl for FunctionWithStringArgument {
@@ -122,12 +124,7 @@ impl IDispatch_Impl for FunctionWithStringArgument {
             .to_string(),
         ));
 
-        {
-            let mut guard = self.data.write().unwrap();
-            if let Some(data) = guard.as_mut() {
-                data.queue.push_front(b_str_val);
-            }
-        }
+        self.sender.send(b_str_val).unwrap();
 
         Ok(())
     }

@@ -1,6 +1,4 @@
-//! A demo using raw win32 API for window creation and event handling.
-//!
-//! Also features communication between the webpage and the host.
+//! Example for setting background color.
 
 use once_cell::unsync::OnceCell;
 use std::mem;
@@ -8,30 +6,8 @@ use std::ptr;
 use std::rc::Rc;
 use webview2::Controller;
 use winapi::{
-    shared::minwindef::*, shared::windef::*, um::libloaderapi::*, um::winbase::MulDiv,
-    um::wingdi::*, um::winuser::*,
+    shared::minwindef::*, shared::windef::*, um::libloaderapi::GetModuleHandleW, um::winuser::*,
 };
-
-fn set_dpi_aware() {
-    unsafe {
-        // Windows 10.
-        let user32 = LoadLibraryA(b"user32.dll\0".as_ptr() as *const i8);
-        let set_thread_dpi_awareness_context = GetProcAddress(
-            user32,
-            b"SetThreadDpiAwarenessContext\0".as_ptr() as *const i8,
-        );
-        if !set_thread_dpi_awareness_context.is_null() {
-            let set_thread_dpi_awareness_context: extern "system" fn(
-                DPI_AWARENESS_CONTEXT,
-            )
-                -> DPI_AWARENESS_CONTEXT = mem::transmute(set_thread_dpi_awareness_context);
-            set_thread_dpi_awareness_context(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-            return;
-        }
-        // Windows 7.
-        SetProcessDPIAware();
-    }
-}
 
 fn main() {
     if webview2::get_available_browser_version_string(None).is_err() {
@@ -64,7 +40,10 @@ fn main() {
     let width = 600;
     let height = 400;
 
-    set_dpi_aware();
+    unsafe {
+        // High DPI support.
+        SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+    }
 
     let controller = Rc::new(OnceCell::<Controller>::new());
     let controller_clone = controller.clone();
@@ -142,10 +121,8 @@ fn main() {
     }
 
     // Create window. (Standard windows GUI boilerplate).
-    let window_title = utf_16_null_terminiated("WebView2 - Win 32");
-    let hdc = unsafe { GetDC(ptr::null_mut()) };
-    let dpi = unsafe { GetDeviceCaps(hdc, LOGPIXELSX) };
-    unsafe { ReleaseDC(ptr::null_mut(), hdc) };
+    let window_title = utf_16_null_terminiated("WebView2 Background Color");
+    let dpi = unsafe { GetDpiForSystem() } as i32;
     let hwnd = unsafe {
         CreateWindowExW(
             0,
@@ -154,8 +131,8 @@ fn main() {
             WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
-            MulDiv(width, dpi, USER_DEFAULT_SCREEN_DPI),
-            MulDiv(height, dpi, USER_DEFAULT_SCREEN_DPI),
+            width * dpi / USER_DEFAULT_SCREEN_DPI,
+            height * dpi / USER_DEFAULT_SCREEN_DPI,
             ptr::null_mut(),
             ptr::null_mut(),
             h_instance,
@@ -184,38 +161,24 @@ fn main() {
         env.unwrap().create_controller(hwnd, move |c| {
             let c = c.unwrap();
 
+            if let Ok(c2) = c.get_controller2() {
+                c2.put_default_background_color(webview2_sys::Color {
+                    r: 0,
+                    g: 255,
+                    b: 255,
+                    a: 255,
+                })
+                .unwrap();
+            } else {
+                eprintln!("failed to get interface to controller2");
+            }
+
             let mut r = unsafe { mem::zeroed() };
             unsafe {
                 GetClientRect(hwnd, &mut r);
             }
             c.put_bounds(r).unwrap();
 
-            let w = c.get_webview().unwrap();
-            // Communication.
-            w.navigate_to_string(r##"
-<!doctype html>
-<title>Demo</title>
-<form action="javascript:void(0);">
-    <label for="message-input">Message: </label
-    ><input id="message-input" type="text"
-    ><button type="submit">Send</button>
-</form>
-<script>
-const inputElement = document.getElementById('message-input');
-document.getElementsByTagName('form')[0].addEventListener('submit', e => {
-    // Send message to host.
-    window.chrome.webview.postMessage(inputElement.value);
-});
-// Receive from host.
-window.chrome.webview.addEventListener('message', event => alert('Received message: ' + event.data));
-</script>
-"##).unwrap();
-            // Receive message from webpage.
-            w.add_web_message_received(|w, msg| {
-                let msg = msg.try_get_web_message_as_string()?;
-                // Send it back.
-                w.post_web_message_as_string(&msg)
-            }).unwrap();
             controller_clone.set(c).unwrap();
             Ok(())
         })
@@ -301,7 +264,7 @@ mod wnd_proc_helper {
             let f_ptr = GLOBAL_F.get() as *mut F;
 
             if msg == WM_DESTROY {
-                Box::from_raw(f_ptr);
+                drop(Box::from_raw(f_ptr));
                 GLOBAL_F.set(0);
                 PostQuitMessage(0);
                 return 0;

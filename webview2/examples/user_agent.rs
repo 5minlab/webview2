@@ -306,7 +306,7 @@ mod wnd_proc_helper {
             let f_ptr = GLOBAL_F.get() as *mut F;
 
             if msg == WM_DESTROY {
-                Box::from_raw(f_ptr);
+                drop(Box::from_raw(f_ptr));
                 GLOBAL_F.set(0);
                 PostQuitMessage(0);
                 return 0;
