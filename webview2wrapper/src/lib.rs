@@ -13,11 +13,6 @@ struct WebView2Data {
 
     // Callbacks
     #[allow(unused)]
-    editor_obj: Box<host_object::Variant>,
-    #[allow(unused)]
-    message_obj: Box<host_object::Variant>,
-    #[allow(unused)]
-
     queue: mpsc::Receiver<String>,
 }
 
@@ -46,8 +41,6 @@ pub unsafe extern "C" fn webview2_open(url_ptr: *const u16, len: u32) -> usize {
                     let _ = settings.put_is_status_bar_enabled(false);
                     let _ = settings.put_are_default_context_menus_enabled(false);
                     let _ = settings.put_is_zoom_control_enabled(false);
-                    let _ = settings.put_are_host_objects_allowed(true);
-                    let _ = settings.put_are_dev_tools_enabled(true);
                 });
 
                 let r = RECT {
@@ -59,27 +52,42 @@ pub unsafe extern "C" fn webview2_open(url_ptr: *const u16, len: u32) -> usize {
 
                 controller.put_bounds(r).expect("put_bounds");
 
-                let mut editor_obj = Box::new(host_object::Variant::from(1));
-                w.add_host_object_to_script("editor", &mut editor_obj.0)
-                    .expect("add_host_object_to_script");
-
+                let editor_obj = Box::new(host_object::Variant::from(1));
                 let (sender, receiver) = mpsc::channel();
-                let obj = host_object::FunctionWithStringArgument { sender };
-                let mut message_obj = Box::new(host_object::Variant::from(ManuallyDrop::new(
-                    Some(IDispatch::from(obj)),
-                )));
-                w.add_host_object_to_script("functioncall", &mut message_obj.0)
-                    .expect("add_host_object_to_script");
+                let obj = host_object::FunctionWithStringArgument {
+                    sender: sender.clone(),
+                };
+                let message_obj = Box::new(host_object::Variant::from(ManuallyDrop::new(Some(
+                    IDispatch::from(obj),
+                ))));
 
-                w.navigate(&url_str).expect("navigate");
-                w.open_dev_tools_window().expect("open_dev_tools_window");
+                let sender0 = sender.clone();
+                w.add_web_message_received(move |_w, args| {
+                    let msg = args.try_get_web_message_as_string();
+                    eprintln!("msg={:?}", msg);
+                    if let Ok(msg) = msg {
+                        sender0.send(msg).expect("mpsc::Sender::send");
+                    }
+                    Ok(())
+                })
+                .expect("add_web_message_received");
+
+                host_object::ensure_bind(w.clone(), "editor".to_owned(), editor_obj, move |w| {
+                    let url_str = url_str.clone();
+                    host_object::ensure_bind(
+                        w.clone(),
+                        "functioncall".to_owned(),
+                        message_obj,
+                        move |w| {
+                            w.navigate(&url_str).expect("navigate");
+                        },
+                    );
+                });
 
                 {
                     let mut guard = wrapper.write().unwrap();
                     *guard = Some(WebView2Data {
                         controller,
-                        editor_obj,
-                        message_obj,
 
                         queue: receiver,
                     });
@@ -109,6 +117,22 @@ pub unsafe extern "C" fn webview2_set_visible(ptr: usize, visible: i32) {
 
     std::mem::forget(data);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn webview2_open_dev_tools_window(ptr: usize) {
+    let data: WebView2DataWrapper = Arc::from_raw(ptr as *mut _);
+
+    {
+        let mut guard = data.write().unwrap();
+        if let Some(data) = guard.as_mut() {
+            let w = data.controller.get_webview().expect("get_webview");
+            w.open_dev_tools_window().expect("open_dev_tools_window");
+        }
+    }
+
+    std::mem::forget(data);
+}
+
 
 #[no_mangle]
 pub unsafe extern "C" fn webview2_update_position(ptr: usize, left: i32, top: i32, w: i32, h: i32) {

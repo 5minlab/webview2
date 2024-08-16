@@ -1,5 +1,7 @@
 use std::mem::ManuallyDrop;
 use windows::core::*;
+use std::sync::mpsc;
+use crate::WebView;
 pub use windows::Win32::System::Com::IDispatch;
 
 use windows::Win32::System::{
@@ -130,4 +132,44 @@ impl IDispatch_Impl for FunctionWithStringArgument {
 
         Ok(())
     }
+}
+
+pub fn check_loaded(name: &str) -> String {
+    // format!("(function () {{ try {{ typeof window.chrome.webview.hostObjects.sync.{}; return 'loaded'; }} catch (e) {{ if(e.message.indexOf('Element out found') === 0) {{ return 'not_loaded'; }} else {{ return 'error' }} }} }})()", name)
+    format!("(function () {{ try {{ typeof window.chrome.webview.hostObjects.sync.{}; return 'loaded'; }} catch (e) {{ return 'not_loaded'; }} }})()", name)
+}
+
+pub fn ensure_bind<F>(w: WebView, name: String, mut obj: Box<Variant>, cb: F)
+where
+    F: FnOnce(WebView) + 'static,
+{
+    eprintln!("bind");
+    w.add_host_object_to_script(&name, &mut obj.0)
+        .expect("add_host_object_to_script");
+
+    check_bind(w.clone(), name.clone(), obj, cb);
+}
+
+pub fn check_bind<F>(w: WebView, name: String, obj: Box<Variant>, cb: F)
+where
+    F: FnOnce(WebView) + 'static,
+{
+    eprintln!("check_bind");
+    let script = check_loaded(&name);
+
+    let w0 = w.clone();
+    w.execute_script(&script, move |s| {
+        println!("s={:?}", s);
+        if s == "\"loaded\"" {
+            cb(w0);
+        } else if s == "\"not_loaded\"" {
+            ensure_bind(w0, name.clone(), obj, cb);
+        } else {
+            todo!();
+        }
+        Ok(())
+    })
+    .expect("execute_script");
+
+    eprintln!("check_bind end");
 }

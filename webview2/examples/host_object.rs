@@ -14,55 +14,6 @@ use winit::event_loop::{ControlFlow, EventLoop};
 use winit::platform::windows::WindowExtWindows;
 use winit::window::WindowBuilder;
 
-fn check_loaded(name: &str) -> String {
-    // format!("(function () {{ try {{ typeof window.chrome.webview.hostObjects.sync.{}; return 'loaded'; }} catch (e) {{ if(e.message.indexOf('Element out found') === 0) {{ return 'not_loaded'; }} else {{ return 'error' }} }} }})()", name)
-    format!("(function () {{ try {{ typeof window.chrome.webview.hostObjects.sync.{}; return 'loaded'; }} catch (e) {{ return 'not_loaded'; }} }})()", name)
-}
-
-fn ensure_bind<F>(w: webview2::WebView, name: String, sender: mpsc::Sender<String>, cb: F)
-where
-    F: FnMut() + 'static,
-{
-    eprintln!("bind");
-    let obj = host_object::FunctionWithStringArgument {
-        sender: sender.clone(),
-    };
-    let mut message_obj = Box::new(host_object::Variant::from(ManuallyDrop::new(Some(
-        IDispatch::from(obj),
-    ))));
-    w.add_host_object_to_script(&name, &mut message_obj.0)
-        .expect("add_host_object_to_script");
-
-    check_bind(w.clone(), name.clone(), sender.clone(), cb);
-
-    std::mem::forget(message_obj);
-}
-
-fn check_bind<F>(w: webview2::WebView, name: String, sender: mpsc::Sender<String>, mut cb: F)
-where
-    F: FnMut() + 'static,
-{
-    eprintln!("check_bind");
-    let script = check_loaded(&name);
-
-    let w0 = w.clone();
-    let sender1 = sender.clone();
-    w.execute_script(&script, move |s| {
-        println!("s={:?}", s);
-        if s == "\"loaded\"" {
-            cb();
-        } else if s == "\"not_loaded\"" {
-            ensure_bind(w0.clone(), name.clone(), sender1.clone(), cb);
-        } else {
-            todo!();
-        }
-        Ok(())
-    })
-    .expect("execute_script");
-
-    eprintln!("check_bind end");
-}
-
 #[allow(unused)]
 fn bind(w: webview2::WebView, sender: mpsc::Sender<String>) {
     eprintln!("bind");
@@ -97,7 +48,7 @@ fn run_script(w: webview2::WebView, sender: mpsc::Sender<String>) {
     eprintln!("run_script end");
 }
 
-fn run_script0(w: webview2::WebView) {
+fn run_script0(w: &webview2::WebView) {
     eprintln!("run_script0");
     let script =
         r#"document.write(window.chrome.webview.hostObjects.sync.functioncall("hello")); "hello""#;
@@ -109,7 +60,6 @@ fn run_script0(w: webview2::WebView) {
     .expect("run_script0");
     eprintln!("run_script end");
 }
-
 
 fn main() {
     let event_loop = EventLoop::new();
@@ -148,32 +98,33 @@ fn main() {
                     let (sender, receiver) = mpsc::channel();
                     let url = "about:blank";
 
+                    let obj = host_object::FunctionWithStringArgument {
+                        sender: sender.clone(),
+                    };
+                    let message_obj =
+                        Box::new(host_object::Variant::from(ManuallyDrop::new(Some(IDispatch::from(obj)))));
+
+                    host_object::ensure_bind(
+                        w.clone(),
+                        "functioncall".to_owned(),
+                        message_obj,
+                        move |w| {
+                            run_script0(&w);
+                            w.navigate("https://wikipedia.com").expect("navigate");
+                        },
+                    );
+
                     let sender0 = sender.clone();
-                    w.add_navigation_starting(move |w, args| {
-                        let url_loaded = args.get_uri().unwrap();
-                        eprintln!("navigation_starting url={}, url_loaded={}", url, url_loaded);
-                        if url == url_loaded {
-                            let w0 = w.clone();
-                            ensure_bind(w, "functioncall".to_owned(), sender0.clone(), move || {
-                                run_script0(w0.clone());
-                            });
+                    w.add_web_message_received(move |_w, args| {
+                        let msg = args.try_get_web_message_as_string();
+                        eprintln!("msg={:?}", msg);
+                        if let Ok(msg) = msg {
+                            sender0.send(msg).expect("mpsc::Sender::send");
                         }
                         Ok(())
-                    })
-                    .unwrap();
-
-                    /*
-                    let sender0 = sender.clone();
-                    w.add_navigation_completed(move |w, _| {
-                        eprintln!("navigation_completed");
-                        run_script(w.clone(), sender0.clone());
-                        Ok(())
-                    })
-                    .unwrap();
-                    */
+                    }).expect("add_web_message_received");
 
                     w.navigate(url).expect("navigate");
-
                     w.open_dev_tools_window().expect("open_dev_tools_window");
 
                     controller_clone.set(controller).unwrap();
@@ -193,6 +144,7 @@ fn main() {
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
 
+        /*
         if let Some(receiver) = receiver.get() {
             if let Ok(out) = receiver.try_recv() {
                 println!("out={}", out);
@@ -200,6 +152,7 @@ fn main() {
                 return;
             }
         }
+        */
 
         match event {
             Event::WindowEvent { event, .. } => match event {
