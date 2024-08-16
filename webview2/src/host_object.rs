@@ -1,15 +1,13 @@
 use std::mem::ManuallyDrop;
-use windows::{
-    core::BSTR,
-    Win32::System::{
-        Com::{IDispatch_Impl, ITypeInfo, DISPATCH_FLAGS, DISPPARAMS, EXCEPINFO},
-        Variant::{
-            VARENUM, VARIANT, VARIANT_0, VARIANT_0_0, VARIANT_0_0_0, VT_BSTR, VT_DISPATCH, VT_I4,
-        },
+use windows::core::*;
+pub use windows::Win32::System::Com::IDispatch;
+
+use windows::Win32::System::{
+    Com::{IDispatch_Impl, ITypeInfo, DISPATCH_FLAGS, DISPPARAMS, EXCEPINFO},
+    Variant::{
+        VARENUM, VARIANT, VARIANT_0, VARIANT_0_0, VARIANT_0_0_0, VT_BSTR, VT_DISPATCH, VT_I4,
     },
 };
-
-pub use windows::Win32::System::Com::IDispatch;
 
 // This is a simple usage example. add_host_object_to_script is a mapping of the native [addHostObjectToScript](https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2#addhostobjecttoscript) method of webview2. It requires manual creation of hostobject and memory management. Please use it with caution.
 pub struct Variant(pub VARIANT);
@@ -41,21 +39,25 @@ impl From<String> for Variant {
         )
     }
 }
+
 impl From<&str> for Variant {
     fn from(value: &str) -> Variant {
         Variant::from(value.to_string())
     }
 }
+
 impl From<i32> for Variant {
     fn from(value: i32) -> Variant {
         Variant::new(VT_I4, VARIANT_0_0_0 { lVal: value })
     }
 }
-impl From<std::mem::ManuallyDrop<::core::option::Option<IDispatch>>> for Variant {
-    fn from(value: std::mem::ManuallyDrop<::core::option::Option<IDispatch>>) -> Variant {
+
+impl From<ManuallyDrop<Option<IDispatch>>> for Variant {
+    fn from(value: ManuallyDrop<Option<IDispatch>>) -> Variant {
         Variant::new(VT_DISPATCH, VARIANT_0_0_0 { pdispVal: value })
     }
 }
+
 impl Drop for Variant {
     fn drop(&mut self) {
         match VARENUM(unsafe { self.0.Anonymous.Anonymous.vt.0 }) {
@@ -66,7 +68,7 @@ impl Drop for Variant {
     }
 }
 
-#[windows::core::implement(IDispatch)]
+#[implement(IDispatch)]
 pub struct FunctionWithStringArgument {
     pub sender: std::sync::mpsc::Sender<String>,
 }
@@ -86,8 +88,8 @@ impl IDispatch_Impl for FunctionWithStringArgument {
 
     fn GetIDsOfNames(
         &self,
-        _riid: *const ::windows::core::GUID,
-        _rgsznames: *const ::windows::core::PCWSTR,
+        _riid: *const GUID,
+        _rgsznames: *const PCWSTR,
         _cnames: u32,
         _lcid: u32,
         _rgdispid: *mut i32,
@@ -98,7 +100,7 @@ impl IDispatch_Impl for FunctionWithStringArgument {
     fn Invoke(
         &self,
         _dispidmember: i32,
-        _riid: *const windows::core::GUID,
+        _riid: *const GUID,
         _lcid: u32,
         _wflags: DISPATCH_FLAGS,
         pdispparams: *const DISPPARAMS,

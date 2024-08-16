@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-const WEBVIEW_SDK_VERSION: &str = "1.0.961.33";
+const WEBVIEW_SDK_VERSION: &str = "1.0.2592.51";
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");

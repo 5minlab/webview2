@@ -252,9 +252,7 @@ extern "stdcall" {
 }
 /// Contains the information packed into the `LPARAM` sent to a Win32 key
 /// event.  For more information about `WM_KEYDOWN`, navigate to
-/// \[WM_KEYDOWN message\]\[WindowsWin32InputdevWmKeydown\].
-///
-/// \[WindowsWin32InputdevWmKeydown\]: /windows/win32/inputdev/wm-keydown "WM_KEYDOWN message | Microsoft Docs"
+/// [WM_KEYDOWN message](/windows/win32/inputdev/wm-keydown).
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct PhysicalKeyStatus {
@@ -356,8 +354,20 @@ pub enum ScriptDialogKind {
     Beforeunload,
 }
 
+/// Set ScrollBar style on `ICoreWebView2EnvironmentOptions` during environment creation.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum ScrollbarStyle {
+    /// Browser default ScrollBar style
+    Default,
+    /// Window style fluent overlay scroll bar
+    /// Please see [Fluent UI](https://developer.microsoft.com/fluentui#/)
+    /// for more details on fluent UI.
+    FluentOverlay,
+}
+
 /// Specifies the process failure type used in the
-/// `ICoreWebView2ProcessFailedEventHandler` interface. The values in this enum
+/// `ICoreWebView2ProcessFailedEventArgs` interface. The values in this enum
 /// make reference to the process kinds in the Chromium architecture. For more
 /// information about what these processes are and what they do, see
 /// [Browser Architecture - Inside look at modern web browser](https://developers.google.com/web/updates/2018/09/inside-browser-part1).
@@ -368,33 +378,75 @@ pub enum ProcessFailedKind {
     /// automatically moves to the Closed state.  The app has to recreate a new
     /// WebView to recover from this failure.
     BrowserProcessExited,
-    /// Indicates that the main frame's render process ended unexpectedly.  A new
-    /// render process is created automatically and navigated to an error page.
-    /// You can use the `Reload` method to try to reload the page that failed.
+    /// Indicates that the main frame's render process ended unexpectedly. Any
+    /// subframes in the WebView will be gone too.  A new render process is
+    /// created automatically and navigated to an error page. You can use the
+    /// `Reload` method to try to recover from this failure. Alternatively, you
+    /// can `Close` and recreate the WebView.
     RenderProcessExited,
-    /// Indicates that the main frame's render process is unresponsive.
+    /// Indicates that the main frame's render process is unresponsive. Renderer
+    /// process unresponsiveness can happen for the following reasons:
+    ///
+    /// *   There is a **long-running script** being executed. For example, the
+    /// web content in your WebView might be performing a synchronous XHR, or have
+    /// entered an infinite loop.
+    /// *   The **system is busy**.
+    ///
+    /// The `ProcessFailed` event will continue to be raised every few seconds
+    /// until the renderer process has become responsive again. The application
+    /// can consider taking action if the event keeps being raised. For example,
+    /// the application might show UI for the user to decide to keep waiting or
+    /// reload the page, or navigate away.
     RenderProcessUnresponsive,
     /// Indicates that a frame-only render process ended unexpectedly. The process
     /// exit does not affect the top-level document, only a subset of the
     /// subframes within it. The content in these frames is replaced with an error
-    /// page in the frame.
+    /// page in the frame. Your application can communicate with the main frame to
+    /// recover content in the impacted frames, using
+    /// `ICoreWebView2ProcessFailedEventArgs2::FrameInfosForFailedProcess` to get
+    /// information about the impacted frames.
     FrameRenderProcessExited,
-    /// Indicates that a utility process ended unexpectedly.
+    /// Indicates that a utility process ended unexpectedly. The failed process
+    /// is recreated automatically. Your application does **not** need to handle
+    /// recovery for this event, but can use `ICoreWebView2ProcessFailedEventArgs`
+    /// and `ICoreWebView2ProcessFailedEventArgs2` to collect information about
+    /// the failure, including `ProcessDescription`.
     UtilityProcessExited,
-    /// Indicates that a sandbox helper process ended unexpectedly.
+    /// Indicates that a sandbox helper process ended unexpectedly. This failure
+    /// is not fatal. Your application does **not** need to handle recovery for
+    /// this event, but can use `ICoreWebView2ProcessFailedEventArgs` and
+    /// `ICoreWebView2ProcessFailedEventArgs2` to collect information about
+    /// the failure.
     SandboxHelperProcessExited,
-    /// Indicates that the GPU process ended unexpectedly.
+    /// Indicates that the GPU process ended unexpectedly. The failed process
+    /// is recreated automatically. Your application does **not** need to handle
+    /// recovery for this event, but can use `ICoreWebView2ProcessFailedEventArgs`
+    /// and `ICoreWebView2ProcessFailedEventArgs2` to collect information about
+    /// the failure.
     GpuProcessExited,
-    /// Indicates that a PPAPI plugin process ended unexpectedly.
+    /// Indicates that a PPAPI plugin process ended unexpectedly. This failure
+    /// is not fatal. Your application does **not** need to handle recovery for
+    /// this event, but can use `ICoreWebView2ProcessFailedEventArgs` and
+    /// `ICoreWebView2ProcessFailedEventArgs2` to collect information about
+    /// the failure, including `ProcessDescription`.
     PpapiPluginProcessExited,
-    /// Indicates that a PPAPI plugin broker process ended unexpectedly.
+    /// Indicates that a PPAPI plugin broker process ended unexpectedly. This failure
+    /// is not fatal. Your application does **not** need to handle recovery for
+    /// this event, but can use `ICoreWebView2ProcessFailedEventArgs` and
+    /// `ICoreWebView2ProcessFailedEventArgs2` to collect information about
+    /// the failure.
     PpapiBrokerProcessExited,
-    /// Indicates that a process of unspecified kind ended unexpectedly.
+    /// Indicates that a process of unspecified kind ended unexpectedly. Your
+    /// application can use `ICoreWebView2ProcessFailedEventArgs` and
+    /// `ICoreWebView2ProcessFailedEventArgs2` to collect information about
+    /// the failure.
     UnknownProcessExited,
 }
 
 /// Specifies the process failure reason used in the
-/// `ICoreWebView2ProcessFailedEventHandler` interface.
+/// `ICoreWebView2ProcessFailedEventArgs` interface. For process failures where
+/// a process has exited, it indicates the type of issue that produced the
+/// process exit.
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ProcessFailedReason {
@@ -405,12 +457,15 @@ pub enum ProcessFailedReason {
     Unresponsive,
     /// The process was terminated. For example, from Task Manager.
     Terminated,
-    /// The process crashed.
+    /// The process crashed. Most crashes will generate dumps in the location
+    /// indicated by `ICoreWebView2Environment11::get_FailureReportFolderPath`.
     Crashed,
     /// The process failed to launch.
     LaunchFailed,
-    /// The process died due to running out of memory.
+    /// The process terminated due to running out of memory.
     OutOfMemory,
+    /// The process exited because its corresponding profile was deleted.
+    ProfileDeleted,
 }
 
 /// Indicates the type of a permission request.
@@ -425,14 +480,42 @@ pub enum PermissionKind {
     Camera,
     /// Indicates permission to access geolocation.
     Geolocation,
-    /// Indicates permission to send web notifications.  This permission request
-    /// is currently auto-rejected and no event is run for it.
+    /// Indicates permission to send web notifications. Apps that would like to
+    /// show notifications should handle `PermissionRequested` events
+    /// and no browser permission prompt will be shown for notification requests.
+    /// Note that push notifications are currently unavailable in WebView2.
     Notifications,
     /// Indicates permission to access generic sensor.  Generic Sensor covering
     /// ambient-light-sensor, accelerometer, gyroscope, and magnetometer.
     OtherSensors,
     /// Indicates permission to read the system clipboard without a user gesture.
     ClipboardRead,
+    /// Indicates permission to automatically download multiple files. Permission
+    /// is requested when multiple downloads are triggered in quick succession.
+    MultipleAutomaticDownloads,
+    /// Indicates permission to read and write to files or folders on the device.
+    /// Permission is requested when developers use the [File System Access API](https://developer.mozilla.org/docs/Web/API/File_System_Access_API)
+    /// to show the file or folder picker to the end user, and then request
+    /// "readwrite" permission for the user's selection.
+    FileReadWrite,
+    /// Indicates permission to play audio and video automatically on sites. This
+    /// permission affects the autoplay attribute and play method of the audio and
+    /// video HTML elements, and the start method of the Web Audio API. See the
+    /// [Autoplay guide for media and Web Audio APIs](https://developer.mozilla.org/docs/Web/Media/Autoplay_guide) for details.
+    Autoplay,
+    /// Indicates permission to use fonts on the device. Permission is requested
+    /// when developers use the [Local Font Access API](https://wicg.github.io/local-font-access/)
+    /// to query the system fonts available for styling web content.
+    LocalFonts,
+    /// Indicates permission to send and receive system exclusive messages to/from MIDI
+    /// (Musical Instrument Digital Interface) devices. Permission is requested
+    /// when developers use the [Web MIDI API](https://developer.mozilla.org/docs/Web/API/Web_MIDI_API)
+    /// to request access to system exclusive MIDI messages.
+    MidiSystemExclusiveMessages,
+    /// Indicates permission to open and place windows on the screen. Permission is
+    /// requested when developers use the [Multi-Screen Window Placement API](https://www.w3.org/TR/window-placement/)
+    /// to get screen details.
+    WindowManagement,
 }
 
 /// Specifies the response to a permission request.
@@ -471,9 +554,7 @@ pub enum WebErrorStatus {
     /// revocation information or revocation mechanism, non-unique host name,
     /// lack of certificate transparency information, or the certificate is
     /// chained to a
-    /// \[legacy Symantec root\]\[GoogleblogSecurity201803DistrustSymantecPkiImmediateHtml\].
-    ///
-    /// \[GoogleblogSecurity201803DistrustSymantecPkiImmediateHtml\]: https://security.googleblog.com/2018/03/distrust-of-symantec-pki-immediate.html "Distrust of the Symantec PKI: Immediate action needed by site operators | Google Security Blog"
+    /// [legacy Symantec root](https://security.googleblog.com/2018/03/distrust-of-symantec-pki-immediate.html).
     CertificateIsInvalid,
     /// Indicates that the host is unreachable.
     ServerUnreachable,
@@ -491,12 +572,26 @@ pub enum WebErrorStatus {
     CannotConnect,
     /// Indicates that the provided host name was not able to be resolved.
     HostNameNotResolved,
-    /// Indicates that the operation was canceled.
+    /// Indicates that the operation was canceled. This status code is also used
+    /// in the following cases:
+    /// - When the app cancels a navigation via NavigationStarting event.
+    /// - For original navigation if the app navigates the WebView2 in a rapid succession
+    /// away after the load for original navigation commenced, but before it completed.
     OperationCanceled,
     /// Indicates that the request redirect failed.
     RedirectFailed,
     /// Indicates that an unexpected error occurred.
     UnexpectedError,
+    /// Indicates that user is prompted with a login, waiting on user action.
+    /// Initial navigation to a login site will always return this even if app provides
+    /// credential using BasicAuthenticationRequested.
+    /// HTTP response status code in this case is 401.
+    /// See status code reference here: https://developer.mozilla.org/docs/Web/HTTP/Status.
+    ValidAuthenticationCredentialsRequired,
+    /// Indicates that user lacks proper authentication credentials for a proxy server.
+    /// HTTP response status code in this case is 407.
+    /// See status code reference here: https://developer.mozilla.org/docs/Web/HTTP/Status.
+    ValidProxyAuthenticationRequired,
 }
 
 /// Specifies the web resource request contexts.
@@ -517,7 +612,7 @@ pub enum WebResourceContext {
     Font,
     /// Specifies a script resource.
     Script,
-    /// Specifies an XML HTTP request.
+    /// Specifies an XML HTTP request, Fetch and EventSource API communication.
     XmlHttpRequest,
     /// Specifies a Fetch API communication.
     Fetch,
@@ -570,6 +665,19 @@ pub enum KeyEventKind {
     SystemKeyUp,
 }
 
+/// Specifies the browser process exit type used in the
+/// `ICoreWebView2BrowserProcessExitedEventArgs` interface.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum BrowserProcessExitKind {
+    /// Indicates that the browser process ended normally.
+    Normal,
+    /// Indicates that the browser process ended unexpectedly.
+    /// A `ProcessFailed` event will also be sent to listening WebViews from the
+    /// `ICoreWebView2Environment` associated to the failed process.
+    Failed,
+}
+
 /// Mouse event type used by SendMouseInput to convey the type of mouse event
 /// being sent to WebView. The values of this enum align with the matching
 /// WM_* window messages.
@@ -608,6 +716,10 @@ pub enum MouseEventKind {
     XButtonDown = 0x020B,
     /// First or second X button up mouse event, WM_XBUTTONUP.
     XButtonUp = 0x020C,
+    /// Mouse Right Button Down event over a nonclient area, WM_NCRBUTTONDOWN.
+    NonClientRightButtonDown = 0x00A4,
+    /// Mouse Right Button up event over a nonclient area, WM_NCRBUTTONUP.
+    NonClientRightButtonUp = 0x00A5,
 }
 
 /// Mouse event virtual keys associated with a COREWEBVIEW2_MOUSE_EVENT_KIND for
@@ -661,10 +773,11 @@ pub enum PointerEventKind {
 pub enum BoundsMode {
     /// Bounds property represents raw pixels. Physical size of Webview is not impacted by RasterizationScale.
     UseRawPixels,
-    /// Bounds property represents logicl pixels and the RasterizationScale property is used to get the physical size of the WebView.
+    /// Bounds property represents logical pixels and the RasterizationScale property is used to get the physical size of the WebView.
     UseRasterizationScale,
 }
 
+/// Specifies the client certificate kind.
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ClientCertificateKind {
@@ -771,6 +884,479 @@ pub enum DownloadInterruptReason {
     DownloadProcessCrashed,
 }
 
+/// The orientation for printing, used by the `Orientation` property on
+/// `ICoreWebView2PrintSettings`.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PrintOrientation {
+    /// Print the page(s) in portrait orientation.
+    Portrait,
+    /// Print the page(s) in landscape orientation.
+    Landscape,
+}
+
+/// The default download dialog can be aligned to any of the WebView corners
+/// by setting the `DefaultDownloadDialogCornerAlignment` property. The default
+/// position is top-right corner.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum DefaultDownloadDialogCornerAlignment {
+    /// Top-left corner of the WebView.
+    TopLeft,
+    /// Top-right corner of the WebView.
+    TopRight,
+    /// Bottom-left corner of the WebView.
+    BottomLeft,
+    /// Bottom-right corner of the WebView.
+    BottomRight,
+}
+
+/// Indicates the process type used in the ICoreWebView2ProcessInfo interface.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum ProcessKind {
+    /// Indicates the browser process kind.
+    Browser,
+    /// Indicates the render process kind.
+    Renderer,
+    /// Indicates the utility process kind.
+    Utility,
+    /// Indicates the sandbox helper process kind.
+    SandboxHelper,
+    /// Indicates the GPU process kind.
+    Gpu,
+    /// Indicates the PPAPI plugin process kind.
+    PpapiPlugin,
+    /// Indicates the PPAPI plugin broker process kind.
+    PpapiBroker,
+}
+
+/// Specifies the PDF toolbar item types used for the `ICoreWebView2Settings::put_HiddenPdfToolbarItems` method.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PdfToolbarItems {
+    /// No item
+    None = 0x0,
+    /// The save button
+    Save = 0x0001,
+    /// The print button
+    Print = 0x0002,
+    /// The save as button
+    SaveAs = 0x0004,
+    /// The zoom in button
+    ZoomIn = 0x0008,
+    /// The zoom out button
+    ZoomOut = 0x0010,
+    /// The rotate button
+    Rotate = 0x0020,
+    /// The fit page button
+    FitPage = 0x0040,
+    /// The page layout button
+    PageLayout = 0x0080,
+    /// The bookmarks button
+    Bookmarks = 0x0100,
+    /// The page select button
+    PageSelector = 0x0200,
+    /// The search button
+    Search = 0x0400,
+    /// The full screen button
+    FullScreen = 0x0800,
+    /// The more settings button
+    MoreSettings = 0x1000,
+}
+
+/// Indicates the kind of context for which the context menu was created
+/// for the `ICoreWebView2ContextMenuTarget::get_Kind` method.
+/// This enum will always represent the active element that caused the context menu request.
+/// If there is a selection with multiple images, audio and text, for example, the element that
+/// the end user right clicks on within this selection will be the option represented by this enum.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum ContextMenuTargetKind {
+    /// Indicates that the context menu was created for the page without any additional content.
+    Page,
+    /// Indicates that the context menu was created for an image element.
+    Image,
+    /// Indicates that the context menu was created for selected text.
+    SelectedText,
+    /// Indicates that the context menu was created for an audio element.
+    Audio,
+    /// Indicates that the context menu was created for a video element.
+    Video,
+}
+
+/// Specifies the menu item kind
+/// for the `ICoreWebView2ContextMenuItem::get_Kind` method
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum ContextMenuItemKind {
+    /// Specifies a command menu item kind.
+    Command,
+    /// Specifies a check box menu item kind. `ContextMenuItem` objects of this kind
+    /// will need the `IsChecked` property to determine current state of the check box.
+    CheckBox,
+    /// Specifies a radio button menu item kind. `ContextMenuItem` objects of this kind
+    /// will need the `IsChecked` property to determine current state of the radio button.
+    Radio,
+    /// Specifies a separator menu item kind. `ContextMenuItem` objects of this kind
+    /// are used to signal a visual separator with no functionality.
+    Separator,
+    /// Specifies a submenu menu item kind. `ContextMenuItem` objects of this kind will contain
+    /// a `ContextMenuItemCollection` of its children `ContextMenuItem` objects.
+    Submenu,
+}
+
+/// An enum to represent the options for WebView2 color scheme: auto, light, or dark.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PreferredColorScheme {
+    /// Auto color scheme.
+    Auto,
+    /// Light color scheme.
+    Light,
+    /// Dark color scheme.
+    Dark,
+}
+
+/// Specifies the datatype for the
+/// `ICoreWebView2Profile2::ClearBrowsingData` method.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum BrowsingDataKinds {
+    /// Specifies file systems data.
+    FileSystems = 1,
+    /// Specifies data stored by the IndexedDB DOM feature.
+    IndexedDb = 2,
+    /// Specifies data stored by the localStorage DOM API.
+    LocalStorage = 4,
+    /// Specifies data stored by the Web SQL database DOM API.
+    WebSql = 8,
+    /// Specifies data stored by the CacheStorage DOM API.
+    CacheStorage = 16,
+    /// Specifies DOM storage data, now and future. This browsing data kind is
+    /// inclusive of COREWEBVIEW2_BROWSING_DATA_KINDS_FILE_SYSTEMS,
+    /// COREWEBVIEW2_BROWSING_DATA_KINDS_INDEXED_DB,
+    /// COREWEBVIEW2_BROWSING_DATA_KINDS_LOCAL_STORAGE,
+    /// COREWEBVIEW2_BROWSING_DATA_KINDS_WEB_SQL,
+    /// COREWEBVIEW2_BROWSING_DATA_KINDS_SERVICE_WORKERS,
+    /// COREWEBVIEW2_BROWSING_DATA_KINDS_CACHE_STORAGE,
+    /// and some other data kinds not listed yet to keep consistent with
+    /// [DOM-accessible storage](https://www.w3.org/TR/clear-site-data/#storage).
+    AllDomStorage = 32,
+    /// Specifies HTTP cookies data.
+    Cookies = 64,
+    /// Specifies all site data, now and future. This browsing data kind
+    /// is inclusive of COREWEBVIEW2_BROWSING_DATA_KINDS_ALL_DOM_STORAGE and
+    /// COREWEBVIEW2_BROWSING_DATA_KINDS_COOKIES. New site data types
+    /// may be added to this data kind in the future.
+    AllSite = 128,
+    /// Specifies disk cache.
+    DiskCache = 256,
+    /// Specifies download history data.
+    DownloadHistory = 512,
+    /// Specifies general autofill form data.
+    /// This excludes password information and includes information like:
+    /// names, street and email addresses, phone numbers, and arbitrary input.
+    /// This also includes payment data.
+    GeneralAutofill = 1024,
+    /// Specifies password autosave data.
+    PasswordAutosave = 2048,
+    /// Specifies browsing history data.
+    BrowsingHistory = 4096,
+    /// Specifies settings data.
+    Settings = 8192,
+    /// Specifies profile data that should be wiped to make it look like a new profile.
+    /// This does not delete account-scoped data like passwords but will remove access
+    /// to account-scoped data by signing the user out.
+    /// Specifies all profile data, now and future. New profile data types may be added
+    /// to this data kind in the future.
+    /// This browsing data kind is inclusive of COREWEBVIEW2_BROWSING_DATA_KINDS_ALL_SITE,
+    /// COREWEBVIEW2_BROWSING_DATA_KINDS_DISK_CACHE,
+    /// COREWEBVIEW2_BROWSING_DATA_KINDS_DOWNLOAD_HISTORY,
+    /// COREWEBVIEW2_BROWSING_DATA_KINDS_GENERAL_AUTOFILL,
+    /// COREWEBVIEW2_BROWSING_DATA_KINDS_PASSWORD_AUTOSAVE,
+    /// COREWEBVIEW2_BROWSING_DATA_KINDS_BROWSING_HISTORY, and
+    /// COREWEBVIEW2_BROWSING_DATA_KINDS_SETTINGS.
+    AllProfile = 16384,
+    /// Specifies service workers registered for an origin, and clear will result in
+    /// termination and deregistration of them.
+    ServiceWorkers = 32768,
+}
+
+/// Specifies the action type when server certificate error is detected to be
+/// used in the `ICoreWebView2ServerCertificateErrorDetectedEventArgs`
+/// interface.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum ServerCertificateErrorAction {
+    /// Indicates to ignore the warning and continue the request with the TLS
+    /// certificate. This decision is cached for the RequestUri's host and the
+    /// server certificate in the session.
+    AlwaysAllow,
+    /// Indicates to reject the certificate and cancel the request.
+    Cancel,
+    /// Indicates to display the default TLS interstitial error page to user for
+    /// page navigations.
+    /// For others TLS certificate is rejected and the request is cancelled.
+    Default,
+}
+
+/// Specifies the image format to use for favicon.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum FaviconImageFormat {
+    /// Indicates that the PNG image format is used.
+    PNG,
+    /// Indicates the JPEG image format is used.
+    JPEG,
+}
+
+/// Specifies the print dialog kind.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PrintDialogKind {
+    /// Opens the browser print preview dialog.
+    Browser,
+    /// Opens the system print dialog.
+    System,
+}
+
+/// Specifies the duplex option for a print.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PrintDuplex {
+    /// The default duplex for a printer.
+    Default,
+    /// Print on only one side of the sheet.
+    OneSided,
+    /// Print on both sides of the sheet, flipped along the long edge.
+    TwoSidedLongEdge,
+    /// Print on both sides of the sheet, flipped along the short edge.
+    TwoSidedShortEdge,
+}
+
+/// Specifies the color mode for a print.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PrintColorMode {
+    /// The default color mode for a printer.
+    Default,
+    /// Indicate that the printed output will be in color.
+    Color,
+    /// Indicate that the printed output will be in shades of gray.
+    Grayscale,
+}
+
+/// Specifies the collation for a print.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PrintCollation {
+    /// The default collation for a printer.
+    Default,
+    /// Indicate that the collation has been selected for the printed output.
+    Collated,
+    /// Indicate that the collation has not been selected for the printed output.
+    Uncollated,
+}
+
+/// Specifies the media size for a print.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PrintMediaSize {
+    /// The default media size for a printer.
+    Default,
+    /// Indicate custom media size that is specific to the printer.
+    Custom,
+}
+
+/// Indicates the status for printing.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PrintStatus {
+    /// Indicates that the print operation is succeeded.
+    Succeeded,
+    /// Indicates that the printer is not available.
+    PrinterUnavailable,
+    /// Indicates that the print operation is failed.
+    OtherError,
+}
+
+/// Tracking prevention levels.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum TrackingPreventionLevel {
+    /// Tracking prevention is turned off.
+    None,
+    /// The least restrictive level of tracking prevention. Set to this level to
+    /// protect against malicious trackers but allows most other trackers and
+    /// personalize content and ads.
+    ///
+    /// See [Current tracking prevention
+    /// behavior](/microsoft-edge/web-platform/tracking-prevention#current-tracking-prevention-behavior)
+    /// for fine-grained information on what is being blocked with this level and
+    /// can change with different Edge versions.
+    Basic,
+    /// The default level of tracking prevention. Set to this level to
+    /// protect against social media tracking on top of malicious trackers.
+    /// Content and ads will likely be less personalized.
+    ///
+    /// See [Current tracking prevention
+    /// behavior](/microsoft-edge/web-platform/tracking-prevention#current-tracking-prevention-behavior)
+    /// for fine-grained information on what is being blocked with this level and
+    /// can change with different Edge versions.
+    Balanced,
+    /// The most restrictive level of tracking prevention. Set to this level to
+    /// protect
+    /// against malicious trackers and most trackers across sites. Content and ads
+    /// will likely have minimal personalization.
+    ///
+    /// This level blocks the most trackers but could cause some websites to not
+    /// behave as expected.
+    ///
+    /// See [Current tracking prevention
+    /// behavior](/microsoft-edge/web-platform/tracking-prevention#current-tracking-prevention-behavior)
+    /// for fine-grained information on what is being blocked with this level and
+    /// can change with different Edge versions.
+    Strict,
+}
+
+/// Specifies the desired access from script to `CoreWebView2SharedBuffer`.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum SharedBufferAccess {
+    /// Script from web page only has read access to the shared buffer.
+    ReadOnly,
+    /// Script from web page has read and write access to the shared buffer.
+    ReadWrite,
+}
+
+/// Specifies memory usage target level of WebView.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum MemoryUsageTargetLevel {
+    /// Specifies normal memory usage target level.
+    Normal,
+    /// Specifies low memory usage target level.
+    /// Used for inactivate WebView for reduced memory consumption.
+    Low,
+}
+
+/// Specifies the navigation kind of each navigation.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum NavigationKind {
+    /// A navigation caused by `CoreWebView2.Reload()`, `location.reload()`, the end user
+    /// using F5 or other UX, or other reload mechanisms to reload the current document
+    /// without modifying the navigation history.
+    Reload = 0,
+    /// A navigation back or forward to a different entry in the session navigation history,
+    /// like via `CoreWebView2.Back()`, `location.back()`, the end user pressing Alt+Left
+    /// or other UX, or other mechanisms to navigate back or forward in the current
+    /// session navigation history.
+    ///
+    BackOrForward = 1,
+    /// A navigation to another document, which can be caused by `CoreWebView2.Navigate()`,
+    /// `window.location.href = ...`, or other WebView2 or DOM APIs that navigate to a new URI.
+    NewDocument = 2,
+}
+
+/// Indicates the frame type used in the `ICoreWebView2FrameInfo` interface.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum FrameKind {
+    /// Indicates that the frame is an unknown type frame. We may extend this enum
+    /// type to identify more frame kinds in the future.
+    Unknown,
+    /// Indicates that the frame is a primary main frame(webview).
+    MainFrame,
+    /// Indicates that the frame is an iframe.
+    Iframe,
+    /// Indicates that the frame is an embed element.
+    Embed,
+    /// Indicates that the frame is an object element.
+    Object,
+}
+
+/// Specifies the source of `WebResourceRequested` event.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum WebResourceRequestSourceKinds {
+    None = 0,
+    /// Indicates that web resource is requested from main page including dedicated workers and iframes.
+    Document = 1,
+    /// Indicates that web resource is requested from shared worker.
+    SharedWorker = 2,
+    /// Indicates that web resource is requested from service worker.
+    ServiceWorker = 4,
+    /// Indicates that web resource is requested from any supported source.
+    All = 4294967295,
+}
+
+/// This enum contains values representing possible regions a given
+/// point lies within
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum NonClientRegionKind {
+    /// A hit test region out of bounds of the WebView2.
+    /// This has the same value as the Win32 HTNOWHERE
+    Nowhere = 0,
+    /// A hit test region in the WebView2 which does not have the CSS style
+    /// `-webkit-app-region: drag` set. This is normal web content that should not be
+    /// considered part of the app window's title bar. This has the same value
+    /// as the Win32 HTCLIENT constant.
+    Client = 1,
+    /// A hit test region in the WebView2 which has the CSS style
+    /// `-webkit-app-region: drag` set. Web content should use this CSS
+    /// style to identify regions that should be treated like the app
+    /// window's title bar. This has the same value as the Win32 HTCAPTION
+    /// constant.
+    Caption = 2,
+}
+
+/// The channel search kind determines the order that release channels are
+/// searched for during environment creation. The default behavior is to search
+/// for and use the most stable channel found on the device. The order from most
+/// to least stable is: WebView2 Runtime -> Beta -> Dev -> Canary. Switch the
+/// order to prefer the least stable channel in order to perform pre-release
+/// testing. See `COREWEBVIEW2_RELEASE_CHANNELS` for descriptions of channels.
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum ChannelSearchKind {
+    /// Search for a release channel from most to least stable:
+    /// WebView2 Runtime -> Beta -> Dev -> Canary. This is the default behavior.
+    MostStable,
+    /// Search for a release channel from least to most stable:
+    /// Canary -> Dev -> Beta -> WebView2 Runtime.
+    LeastStable,
+}
+
+/// The WebView2 release channels. Use `ReleaseChannels` and `ChannelSearchKind`
+/// on `ICoreWebView2EnvironmentOptions` to control which channel is searched
+/// for during environment creation.
+///
+/// |Channel|Primary purpose|How often updated with new features|
+/// |:---:|---|:---:|
+/// |Stable (WebView2 Runtime)|Broad Deployment|Monthly|
+/// |Beta|Flighting with inner rings, automated testing|Monthly|
+/// |Dev|Automated testing, selfhosting to test new APIs and features|Weekly|
+/// |Canary|Automated testing, selfhosting to test new APIs and features|Daily|
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum ReleaseChannels {
+    /// No release channel. Passing only this value to `ReleaseChannels` results
+    /// in HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND).
+    None = 0x0,
+    /// The stable WebView2 Runtime that is released every 4 weeks.
+    Stable = 0x1,
+    /// The Beta release channel that is released every 4 weeks, a week before the
+    /// stable release.
+    Beta = 0x2,
+    /// The Dev release channel that is released weekly.
+    Dev = 0x4,
+    /// The Canary release channel that is released daily.
+    Canary = 0x8,
+}
+
 /// WebView2 enables you to host web content using the latest Microsoft Edge
 /// browser and web technology.
 #[com_interface("76eceacb-0462-4d94-ac83-423a6793775e")]
@@ -788,13 +1374,15 @@ pub trait ICoreWebView2: IUnknown {
     /// remains the same for other types of navigations such as page refreshes
     /// or `history.pushState` with the same URL as the current page.
     ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    ///
     /// \snippet ControlComponent.cpp SourceChanged
     unsafe fn get_source(&self, /* out, retval */ uri: *mut LPWSTR) -> HRESULT;
 
     /// Cause a navigation of the top-level document to run to the specified URI.
-    /// For more information, navigate to \[Navigation events\]\[MicrosoftEdgeWebview2ConceptsNavigationevents\].
-    ///
-    /// \[MicrosoftEdgeWebview2ConceptsNavigationevents\]: /microsoft-edge/webview2/concepts/navigation-events "Navigation events | Microsoft Docs"
+    /// For more information, navigate to [Navigation
+    /// events](/microsoft-edge/webview2/concepts/navigation-events).
     ///
     /// \> [!NOTE]\n\> This operation starts a navigation and the corresponding
     /// `NavigationStarting` event triggers sometime after `Navigate` runs.
@@ -806,6 +1394,19 @@ pub trait ICoreWebView2: IUnknown {
     /// The `htmlContent` parameter may not be larger than 2 MB (2 * 1024 * 1024 bytes) in total size.
     /// The origin of the new page is `about:blank`.
     ///
+    /// ```cpp
+    ///    SetVirtualHostNameToFolderMapping(
+    ///        L"appassets.example", L"assets",
+    ///        COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY);
+    ///
+    ///    WCHAR c_navString[] = LR"
+    ///    <head><link rel='stylesheet' href ='http://appassets.example/wv2.css'/></head>
+    ///    <body>
+    ///      <img src='http://appassets.example/wv2.png' />
+    ///      <p><a href='http://appassets.example/winrt_test.txt'>Click me</a></p>
+    ///    </body>";
+    ///    m_webView->NavigateToString(c_navString);
+    /// ```
     /// \snippet SettingsComponent.cpp NavigateToString
     unsafe fn navigate_to_string(&self, /* in */ html_content: LPCWSTR) -> HRESULT;
 
@@ -815,7 +1416,8 @@ pub trait ICoreWebView2: IUnknown {
     /// operation as well, and the navigation id is the same as the original
     /// one.
     ///
-    /// You may block corresponding navigations until the event handler returns.
+    /// Navigations will be blocked until all `NavigationStarting` event handlers
+    /// return.
     ///
     /// \snippet SettingsComponent.cpp NavigationStarting
     unsafe fn add_navigation_starting(
@@ -864,12 +1466,14 @@ pub trait ICoreWebView2: IUnknown {
     /// Remove an event handler previously added with `add_SourceChanged`.
     unsafe fn remove_source_changed(&self, /* in */ token: EventRegistrationToken) -> HRESULT;
 
-    /// Add an event handler for the `HistoryChanged` event.  `HistoryChanged`
-    /// listens to the change of navigation history for the top level document.
-    /// Use `HistoryChanged` to verify that the `CanGoBack` or `CanGoForward`
-    /// value has changed.  `HistoryChanged` also runs for using `GoBack`or
-    /// `GoForward`.  `HistoryChanged` runs after `SourceChanged` and
-    /// `ContentLoading`.
+    /// Add an event handler for the `HistoryChanged` event.  `HistoryChanged` is
+    /// raised for changes to joint session history, which consists of top-level
+    /// and manual frame navigations.  Use `HistoryChanged` to verify that the
+    /// `CanGoBack` or `CanGoForward` value has changed.  `HistoryChanged` also
+    /// runs for using `GoBack` or `GoForward`.  `HistoryChanged` runs after
+    /// `SourceChanged` and `ContentLoading`.  `CanGoBack` is false for
+    /// navigations initiated through ICoreWebView2Frame APIs if there has not yet
+    /// been a user gesture.
     ///
     /// \snippet ControlComponent.cpp HistoryChanged
     unsafe fn add_history_changed(
@@ -883,7 +1487,7 @@ pub trait ICoreWebView2: IUnknown {
 
     /// Add an event handler for the `NavigationCompleted` event.
     /// `NavigationCompleted` runs when the WebView has completely loaded
-    /// (`body.onload` runs) or loading stopped with error.
+    /// (concurrently when `body.onload` runs) or loading stopped with error.
     ///
     /// \snippet ControlComponent.cpp NavigationCompleted
     unsafe fn add_navigation_completed(
@@ -904,7 +1508,8 @@ pub trait ICoreWebView2: IUnknown {
     /// this operation as well, and the navigation id is the same as the original
     /// one.
     ///
-    /// You may block corresponding navigations until the event handler returns.
+    /// Navigations will be blocked until all `FrameNavigationStarting` event
+    /// handlers return.
     ///
     /// \snippet SettingsComponent.cpp FrameNavigationStarting
     unsafe fn add_frame_navigation_starting(
@@ -922,7 +1527,7 @@ pub trait ICoreWebView2: IUnknown {
 
     /// Add an event handler for the `FrameNavigationCompleted` event.
     /// `FrameNavigationCompleted` triggers when a child frame has completely
-    /// loaded (`body.onload` has triggered) or loading stopped with error.
+    /// loaded (concurrently when `body.onload` has triggered) or loading stopped with error.
     ///
     /// \snippet ControlComponent.cpp FrameNavigationCompleted
     unsafe fn add_frame_navigation_completed(
@@ -970,7 +1575,8 @@ pub trait ICoreWebView2: IUnknown {
     /// blocked until the event handler returns.  If a deferral is taken, the
     /// scripts are blocked until the deferral is completed.
     ///
-    /// \snippet SettingsComponent.cpp PermissionRequested
+    /// \snippet SettingsComponent.cpp PermissionRequested0
+    /// \snippet SettingsComponent.cpp PermissionRequested1
     unsafe fn add_permission_requested(
         &self,
         /* in */ event_handler: *mut *mut ICoreWebView2PermissionRequestedEventHandlerVTable,
@@ -983,8 +1589,24 @@ pub trait ICoreWebView2: IUnknown {
         /* in */ token: EventRegistrationToken,
     ) -> HRESULT;
 
-    /// Add an event handler for the `ProcessFailed` event.  `ProcessFailed` runs
-    /// when a WebView process ends unexpectedly or becomes unresponsive.
+    /// Add an event handler for the `ProcessFailed` event.
+    /// `ProcessFailed` runs when any of the processes in the
+    /// [WebView2 Process Group](/microsoft-edge/webview2/concepts/process-model?tabs=csharp#processes-in-the-webview2-runtime)
+    /// encounters one of the following conditions:
+    ///
+    /// Condition | Details
+    /// ---|---
+    /// Unexpected exit | The process indicated by the event args has exited unexpectedly (usually due to a crash). The failure might or might not be recoverable and some failures are auto-recoverable.
+    /// Unresponsiveness | The process indicated by the event args has become unresponsive to user input. This is only reported for renderer processes, and will run every few seconds until the process becomes responsive again.
+    ///
+    /// \> [!NOTE]\n\> When the failing process is the browser process, a
+    /// `ICoreWebView2Environment5::BrowserProcessExited` event will run too.
+    ///
+    /// Your application can use `ICoreWebView2ProcessFailedEventArgs` and
+    /// `ICoreWebView2ProcessFailedEventArgs2` to identify which condition and
+    /// process the event is for, and to collect diagnostics and handle recovery
+    /// if necessary. For more details about which cases need to be handled by
+    /// your application, see `COREWEBVIEW2_PROCESS_FAILED_KIND`.
     ///
     /// \snippet ProcessComponent.cpp ProcessFailed
     unsafe fn add_process_failed(
@@ -993,7 +1615,7 @@ pub trait ICoreWebView2: IUnknown {
         /* out */ token: *mut EventRegistrationToken,
     ) -> HRESULT;
 
-    /// Remove an event handler previously added with add_ProcessFailed.
+    /// Remove an event handler previously added with `add_ProcessFailed`.
     unsafe fn remove_process_failed(&self, /* in */ token: EventRegistrationToken) -> HRESULT;
 
     /// Add the provided JavaScript to a list of scripts that should be run after
@@ -1008,21 +1630,19 @@ pub trait ICoreWebView2: IUnknown {
     /// `RemoveScriptToExecuteOnDocumentCreated`.
     ///
     /// If the method is run in add_NewWindowRequested handler it should be called
-    /// after the new window is set. For more details see `ICoreWebView2NewWindowRequestedEventArgs::put_NewWindow`.
+    /// before the new window is set. If called after setting the NewWindow property, the initial script
+    /// may or may not apply to the initial navigation and may only apply to the subsequent navigation.
+    /// For more details see `ICoreWebView2NewWindowRequestedEventArgs::put_NewWindow`.
     ///
     /// \> [!NOTE]\n\> If an HTML document is running in a sandbox of some kind using
-    /// \[sandbox\]\[MdnDocsWebHtmlElementIframeAttrSandbox\]
+    /// [sandbox](https://developer.mozilla.org/docs/Web/HTML/Element/iframe#attr-sandbox)
     /// properties or the
-    /// \[Content-Security-Policy\]\[MdnDocsWebHttpHeadersContentSecurityPolicy\]
+    /// [Content-Security-Policy](https://developer.mozilla.org/docs/Web/HTTP/Headers/Content-Security-Policy)
     /// HTTP header affects the script that runs.  For example, if the
     /// `allow-modals` keyword is not set then requests to run the `alert`
     /// function are ignored.
     ///
     /// \snippet ScriptComponent.cpp AddScriptToExecuteOnDocumentCreated
-    ///
-    /// \[MdnDocsWebHtmlElementIframeAttrSandbox\]: https://developer.mozilla.org/docs/Web/HTML/Element/iframe#attr-sandbox "sandbox - \<iframe\>: The Inline Frame element | MDN"
-    ///
-    /// \[MdnDocsWebHttpHeadersContentSecurityPolicy\]: https://developer.mozilla.org/docs/Web/HTTP/Headers/Content-Security-Policy "Content-Security-Policy | MDN"
     unsafe fn add_script_to_execute_on_document_created(
         &self,
         /* in */ java_script: LPCWSTR,
@@ -1031,7 +1651,11 @@ pub trait ICoreWebView2: IUnknown {
     ) -> HRESULT;
 
     /// Remove the corresponding JavaScript added using
-    /// `AddScriptToExecuteOnDocumentCreated` with the specified script ID.
+    /// `AddScriptToExecuteOnDocumentCreated` with the specified script ID. The
+    /// script ID should be the one returned by the `AddScriptToExecuteOnDocumentCreated`.
+    /// Both use `AddScriptToExecuteOnDocumentCreated` and this method in `NewWindowRequested`
+    /// event handler at the same time sometimes causes trouble.  Since invalid scripts will
+    /// be ignored, the script IDs you got may not be valid anymore.
     unsafe fn remove_script_to_execute_on_document_created(
         &self,
         /* in */ id: LPCWSTR,
@@ -1041,15 +1665,15 @@ pub trait ICoreWebView2: IUnknown {
     /// top-level document rendered in the WebView.  The result of evaluating
     /// the provided JavaScript is used in this parameter.  The result value is
     /// a JSON encoded string.  If the result is undefined, contains a reference
-    /// cycle, or otherwise is not able to be encoded into JSON, the JSON `null`
-    /// value is returned as the `null` string.
+    /// cycle, or otherwise is not able to be encoded into JSON, then the result
+    /// is considered to be null, which is encoded in JSON as the string "null".
     ///
-    /// \> [!NOTE]\n\> A function that has no explicit return value returns undefined.  If the
+    /// \> [!NOTE]\n\> A function that has no explicit return value returns undefined. If the
     /// script that was run throws an unhandled exception, then the result is
-    /// also `null`.  This method is applied asynchronously.  If the method is
+    /// also "null".  This method is applied asynchronously. If the method is
     /// run after the `NavigationStarting` event during a navigation, the script
     /// runs in the new document when loading it, around the time
-    /// `ContentLoading` is run.  This operation works even if
+    /// `ContentLoading` is run.  This operation executes the script even if
     /// `ICoreWebView2Settings::IsScriptEnabled` is set to `FALSE`.
     ///
     /// \snippet ScriptComponent.cpp ExecuteScript
@@ -1086,9 +1710,8 @@ pub trait ICoreWebView2: IUnknown {
     unsafe fn reload(&self) -> HRESULT;
 
     /// Post the specified webMessage to the top level document in this WebView.
-    /// Runs the message event of the `window.chrome.webview` of the top-level
-    /// document.  JavaScript in that document may subscribe and unsubscribe to
-    /// the event using the following code.
+    /// The main page receives the message by subscribing to the `message` event of the
+    /// `window.chrome.webview` of the page document.
     ///
     /// ```cpp
     /// window.chrome.webview.addEventListener('message', handler)
@@ -1097,14 +1720,14 @@ pub trait ICoreWebView2: IUnknown {
     ///
     /// The event args is an instance of `MessageEvent`.  The
     /// `ICoreWebView2Settings::IsWebMessageEnabled` setting must be `TRUE` or
-    /// this method fails with `E_INVALIDARG`.  The `data` property of the event
+    /// the web message will not be sent. The `data` property of the event
     /// arg is the `webMessage` string parameter parsed as a JSON string into a
     /// JavaScript object.  The `source` property of the event arg is a reference
     ///  to the `window.chrome.webview` object.  For information about sending
     /// messages from the HTML document in the WebView to the host, navigate to
-    /// \[add_WebMessageReceived].  The message is sent asynchronously.  If a
-    /// navigation occurs before the message is posted to the page, the message
-    /// is not sent.
+    /// [add_WebMessageReceived](/microsoft-edge/webview2/reference/win32/icorewebview2#add_webmessagereceived).
+    /// The message is delivered asynchronously.  If a navigation occurs before
+    /// the message is posted to the page, the message is discarded.
     ///
     /// \snippet ScenarioWebMessage.cpp WebMessageReceived
     unsafe fn post_web_message_as_json(
@@ -1134,11 +1757,30 @@ pub trait ICoreWebView2: IUnknown {
     ///
     /// \snippet assets\ScenarioWebMessage.html chromeWebView
     ///
-    /// When `postMessage` is run, the `Invoke` method of the `handler` is run
-    /// with the `object` parameter of the `postMessage` converted to a JSON
-    /// string.
+    /// When the page calls `postMessage`, the object parameter is converted to a
+    /// JSON string and is posted asynchronously to the host process. This will
+    /// result in the handler's `Invoke` method being called with the JSON string
+    /// as a parameter.
     ///
     /// \snippet ScenarioWebMessage.cpp WebMessageReceived
+    ///
+    /// If the same page calls `postMessage` multiple times, the corresponding
+    /// `WebMessageReceived` events are guaranteed to be fired in the same order.
+    /// However, if multiple frames call `postMessage`, there is no guaranteed
+    /// order.  In addition, `WebMessageReceived` events caused by calls to
+    /// `postMessage` are not guaranteed to be sequenced with events caused by DOM
+    /// APIs.  For example, if the page runs
+    ///
+    /// ```javascript
+    /// chrome.webview.postMessage("message");
+    /// window.open();
+    /// ```
+    ///
+    /// then the `NewWindowRequested` event might be fired before the
+    /// `WebMessageReceived` event.  If you need the `WebMessageReceived` event
+    /// to happen before anything else, then in the `WebMessageReceived` handler
+    /// you can post a message back to the page and have the page wait until it
+    /// receives that message before continuing.
     unsafe fn add_web_message_received(
         &self,
         /* in */ handler: *mut *mut ICoreWebView2WebMessageReceivedEventHandlerVTable,
@@ -1153,17 +1795,28 @@ pub trait ICoreWebView2: IUnknown {
 
     /// Runs an asynchronous `DevToolsProtocol` method.  For more information
     /// about available methods, navigate to
-    /// \[DevTools Protocol Viewer\]\[GithubChromedevtoolsDevtoolsProtocolTot\]
+    /// [DevTools Protocol Viewer](https://chromedevtools.github.io/devtools-protocol/tot)
     /// .  The `methodName` parameter is the full name of the method in the
     /// `{domain}.{method}` format.  The `parametersAsJson` parameter is a JSON
     /// formatted string containing the parameters for the corresponding method.
     /// The `Invoke` method of the `handler` is run when the method
     /// asynchronously completes.  `Invoke` is run with the return object of the
-    /// method as a JSON string.
+    /// method as a JSON string.  This function returns E_INVALIDARG if the `methodName` is
+    /// unknown or the `parametersAsJson` has an error.  In the case of such an error, the
+    /// `returnObjectAsJson` parameter of the handler will include information
+    /// about the error.
+    /// Note even though WebView2 dispatches the CDP messages in the order called,
+    /// CDP method calls may be processed out of order.
+    /// If you require CDP methods to run in a particular order, you should wait
+    /// for the previous method's completed handler to run before calling the
+    /// next method.
+    /// If the method is to run in add_NewWindowRequested handler it should be called
+    /// before the new window is set if the cdp message should affect the initial navigation. If
+    /// called after setting the NewWindow property, the cdp messages
+    /// may or may not apply to the initial navigation and may only apply to the subsequent navigation.
+    /// For more details see `ICoreWebView2NewWindowRequestedEventArgs::put_NewWindow`.
     ///
     /// \snippet ScriptComponent.cpp CallDevToolsProtocolMethod
-    ///
-    /// \[GithubChromedevtoolsDevtoolsProtocolTot\]: https://chromedevtools.github.io/devtools-protocol/tot "latest (tip-of-tree) protocol - Chrome DevTools Protocol | GitHub"
     unsafe fn call_dev_tools_protocol_method(
         &self,
         /* in */ method_name: LPCWSTR,
@@ -1198,11 +1851,9 @@ pub trait ICoreWebView2: IUnknown {
     /// DevTools Protocol event.  The `eventName` parameter is the full name of
     /// the event in the format `{domain}.{event}`.  For more information about
     /// DevTools Protocol events description and event args, navigate to
-    /// \[DevTools Protocol Viewer\]\[GithubChromedevtoolsDevtoolsProtocolTot\].
+    /// [DevTools Protocol Viewer](https://chromedevtools.github.io/devtools-protocol/tot).
     ///
     /// \snippet ScriptComponent.cpp DevToolsProtocolEventReceived
-    ///
-    /// \[GithubChromedevtoolsDevtoolsProtocolTot\]: https://chromedevtools.github.io/devtools-protocol/tot "latest (tip-of-tree) protocol - Chrome DevTools Protocol | GitHub"
     unsafe fn get_dev_tools_protocol_event_receiver(
         &self,
         /* in */ event_name: LPCWSTR,
@@ -1215,13 +1866,16 @@ pub trait ICoreWebView2: IUnknown {
 
     /// Add an event handler for the `NewWindowRequested` event.
     /// `NewWindowRequested` runs when content inside the WebView requests to
-    /// open a new window, such as through `window.open`.  The app passes a
-    /// target WebView that is considered the opened window.
+    /// open a new window, such as through `window.open`.  The app can pass a
+    /// target WebView that is considered the opened window or mark the event as
+    /// `Handled`, in which case WebView2 does not open a window.
+    /// If either `Handled` or `NewWindow` properties are not set, the target
+    /// content will be opened on a popup window.
     ///
-    /// If a deferral is not taken on the event args, scripts that resulted in
-    /// the new window that are requested are blocked until the event handler
-    /// returns.  If a deferral is taken, then scripts are blocked until the
-    /// deferral is completed or new window is set.
+    /// If a deferral is not taken on the event args, scripts that resulted in the
+    /// new window that are requested are blocked until the event handler returns.
+    /// If a deferral is taken, then scripts are blocked until the deferral is
+    /// completed or new window is set.
     ///
     /// For more details and considerations on the target WebView to be supplied
     /// at the opened window, see `ICoreWebView2NewWindowRequestedEventArgs::put_NewWindow`.
@@ -1261,6 +1915,9 @@ pub trait ICoreWebView2: IUnknown {
     /// The title for the current top-level document.  If the document has no
     /// explicit title or is otherwise empty, a default that may or may not match
     ///  the URI of the document is used.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_document_title(&self, /* out, retval */ title: *mut LPWSTR) -> HRESULT;
 
     /// Add the provided host object to script running in the WebView with the
@@ -1273,12 +1930,16 @@ pub trait ICoreWebView2: IUnknown {
     /// property or method, or rejected in case of error, for example, no
     /// property or method on the object or parameters are not valid.
     ///
-    /// \> [!NOTE]\n\> While simple types, `IDispatch` and array are supported, generic
-    /// `IUnknown`, `VT_DECIMAL`, or `VT_RECORD` variant is not supported.
+    /// \> [!NOTE]\n\> While simple types, `IDispatch` and array are supported, and
+    /// `IUnknown` objects that also implement `IDispatch` are treated as `IDispatch`,
+    /// generic `IUnknown`, `VT_DECIMAL`, or `VT_RECORD` variant is not supported.
     /// Remote JavaScript objects like callback functions are represented as an
     /// `VT_DISPATCH` `VARIANT` with the object implementing `IDispatch`.  The
     /// JavaScript callback method may be invoked using `DISPID_VALUE` for the
-    /// `DISPID`.  Nested arrays are supported up to a depth of 3.  Arrays of by
+    /// `DISPID`.  Such callback method invocations will return immediately and will
+    /// not wait for the JavaScript function to run and so will not provide the return
+    /// value of the JavaScript function.
+    /// Nested arrays are supported up to a depth of 3.  Arrays of by
     /// reference types are not supported. `VT_EMPTY` and `VT_NULL` are mapped
     /// into JavaScript as `null`.  In JavaScript, `null` and undefined are
     /// mapped to `VT_EMPTY`.
@@ -1312,6 +1973,19 @@ pub trait ICoreWebView2: IUnknown {
     ///
     /// The `chrome.webview.hostObjects.cleanupSome` method performs a best
     /// effort garbage collection on host object proxies.
+    ///
+    /// The `chrome.webview.hostObjects.options` object provides the ability to
+    /// change some functionality of host objects.
+    ///
+    /// Options property | Details
+    /// ---|---
+    /// `forceLocalProperties` | This is an array of host object property names that will be run locally, instead of being called on the native host object. This defaults to `then`, `toJSON`, `Symbol.toString`, and `Symbol.toPrimitive`. You can add other properties to specify that they should be run locally on the javascript host object proxy.
+    /// `log` | This is a callback that will be called with debug information. For example, you can set this to `console.log.bind(console)` to have it print debug information to the console to help when troubleshooting host object usage. By default this is null.
+    /// `shouldSerializeDates` | By default this is false, and javascript Date objects will be sent to host objects as a string using `JSON.stringify`. You can set this property to true to have Date objects properly serialize as a `VT_DATE` when sending to the native host object, and have `VT_DATE` properties and return values create a javascript Date object.
+    /// `defaultSyncProxy` | When calling a method on a synchronous proxy, the result should also be a synchronous proxy. But in some cases, the sync/async context is lost (for example, when providing to native code a reference to a function, and then calling that function in native code). In these cases, the proxy will be asynchronous, unless this property is set.
+    /// `forceAsyncMethodMatches ` | This is an array of regular expressions. When calling a method on a synchronous proxy, the method call will be performed asynchronously if the method name matches a string or regular expression in this array. Setting this value to `Async` will make any method that ends with Async be an asynchronous method call. If an async method doesn't match here and isn't forced to be asynchronous, the method will be invoked synchronously, blocking execution of the calling JavaScript and then returning the resolution of the promise, rather than returning a promise.
+    /// `ignoreMemberNotFoundError` | By default, an exception is thrown when attempting to get the value of a proxy property that doesn't exist on the corresponding native class. Setting this property to `true` switches the behavior to match Chakra WinRT projection (and general JavaScript) behavior of returning `undefined` with no error.
+    /// `shouldPassTypedArraysAsArrays` | By default, typed arrays will be passed to host as IDispatch. Otherwise, set to true to pass typed arrays to host as array.
     ///
     /// Host object proxies additionally have the following methods which run
     /// locally.
@@ -1353,14 +2027,15 @@ pub trait ICoreWebView2: IUnknown {
     ///
     /// In the HTML document, use the COM object using
     /// `chrome.webview.hostObjects.sample`.
+    /// Note that `CoreWebView2.AddHostObjectToScript` only applies to the
+    /// top-level document and not to frames. To add host objects to frames use
+    /// `CoreWebView2Frame.AddHostObjectToScript`.
     ///
     /// \snippet assets\ScenarioAddHostObject.html HostObjectUsage
     ///
     /// Exposing host objects to script has security risk.  For more information
     /// about best practices, navigate to
-    /// \[Best practices for developing secure WebView2 applications\]\[MicrosoftEdgeWebview2ConceptsSecurity\].
-    ///
-    /// \[MicrosoftEdgeWebview2ConceptsSecurity\]: /microsoft-edge/webview2/concepts/security "Best practices for developing secure WebView2 applications | Microsoft Docs"
+    /// [Best practices for developing secure WebView2 applications](/microsoft-edge/webview2/concepts/security).
     unsafe fn add_host_object_to_script(
         &self,
         /* in */ name: LPCWSTR,
@@ -1419,10 +2094,12 @@ pub trait ICoreWebView2: IUnknown {
     /// then the web resource requested is blocked until the deferral is
     /// completed.
     ///
-    /// If the method is run in add_NewWindowRequested handler it should be called
+    /// If this event is subscribed in the add_NewWindowRequested handler it should be called
     /// after the new window is set. For more details see `ICoreWebView2NewWindowRequestedEventArgs::put_NewWindow`.
     ///
-    /// Currently this only supports file, http, and https URI schemes.
+    /// This event is by default raised for file, http, and https URI schemes.
+    /// This is also raised for registered custom URI schemes. For more details
+    /// see `ICoreWebView2CustomSchemeRegistration`.
     ///
     /// \snippet SettingsComponent.cpp WebResourceRequested0
     /// \snippet SettingsComponent.cpp WebResourceRequested1
@@ -1461,21 +2138,21 @@ pub trait ICoreWebView2: IUnknown {
     /// matches no URIs.
     ///
     /// For more information about resource context filters, navigate to
-    /// [COREWEBVIEW2_WEB_RESOURCE_CONTEXT].
+    /// [COREWEBVIEW2_WEB_RESOURCE_CONTEXT](/microsoft-edge/webview2/reference/win32/webview2-idl#corewebview2_web_resource_context).
     ///
     /// | URI Filter String | Request URI | Match | Notes |
     /// | ---- | ---- | ---- | ---- |
-    /// | `*` | https://contoso.com/a/b/c | Yes | A single * will match all URIs |
-    /// | `*://contoso.com/*` | https://contoso.com/a/b/c | Yes | Matches everything in contoso.com across all schemes |
-    /// | `*://contoso.com/*` | https://example.com/?https://contoso.com/ | Yes | But also matches a URI with just the same text anywhere in the URI |
-    /// | `example` | https://contoso.com/example | No | The filter does not perform partial matches |
-    /// | `*example` | https://contoso.com/example | Yes | The filter matches across URI parts  |
-    /// | `*example` | https://contoso.com/path/?example | Yes | The fitler matches across URI parts |
-    /// | `*example` | https://contoso.com/path/?query#example | No | The filter is matched against the URI with no fragment |
-    /// | `*example` | https://example | No | The URI is normalzied before filter matching so the actual URI used for comparison is https://example.com/ |
-    /// | `*example/` | https://example | Yes | Just like above, but this time the filter ends with a / just like the normalized URI |
-    /// | https://xn--qei.example/ | https://&#x2764;.example/ | Yes | Non-ASCII hostnames are normalized to punycode before wildcard comparison |
-    /// | https://&#x2764;.example/ | https://xn--qei.example/ | No | Non-ASCII hostnames are normalized to punycode before wildcard comparison |
+    /// | `*` | `https://contoso.com/a/b/c` | Yes | A single * will match all URIs |
+    /// | `*://contoso.com/*` | `https://contoso.com/a/b/c` | Yes | Matches everything in contoso.com across all schemes |
+    /// | `*://contoso.com/*` | `https://example.com/?https://contoso.com/` | Yes | But also matches a URI with just the same text anywhere in the URI |
+    /// | `example` | `https://contoso.com/example` | No | The filter does not perform partial matches |
+    /// | `*example` | `https://contoso.com/example` | Yes | The filter matches across URI parts  |
+    /// | `*example` | `https://contoso.com/path/?example` | Yes | The filter matches across URI parts |
+    /// | `*example` | `https://contoso.com/path/?query#example` | No | The filter is matched against the URI with no fragment |
+    /// | `*example` | `https://example` | No | The URI is normalized before filter matching so the actual URI used for comparison is `https://example/` |
+    /// | `*example/` | `https://example` | Yes | Just like above, but this time the filter ends with a / just like the normalized URI |
+    /// | `https://xn--qei.example/` | `https://&#x2764;.example/` | Yes | Non-ASCII hostnames are normalized to punycode before wildcard comparison |
+    /// | `https://&#x2764;.example/` | `https://xn--qei.example/` | No | Non-ASCII hostnames are normalized to punycode before wildcard comparison |
     unsafe fn add_web_resource_requested_filter(
         &self,
         /* in */ uri: LPCWSTR,
@@ -1497,7 +2174,8 @@ pub trait ICoreWebView2: IUnknown {
     /// `WindowCloseRequested` triggers when content inside the WebView
     /// requested to close the window, such as after `window.close` is run.  The
     /// app should close the WebView and related app window if that makes sense
-    /// to the app.
+    /// to the app. After the first window.close() call, this event may not fire
+    /// for any immediate back to back window.close() calls.
     ///
     /// \snippet AppWindow.cpp WindowCloseRequested
     unsafe fn add_window_close_requested(
@@ -1556,7 +2234,7 @@ pub trait ICoreWebView2_2: ICoreWebView2 {
 
     /// Add an event handler for the DOMContentLoaded event.
     /// DOMContentLoaded is raised when the initial html document has been parsed.
-    /// This aligns with the the document's DOMContentLoaded event in html.
+    /// This aligns with the document's DOMContentLoaded event in html.
     ///
     /// \snippet ScenarioDOMContentLoaded.cpp DOMContentLoaded
     unsafe fn add_domcontent_loaded(
@@ -1653,8 +2331,8 @@ pub trait ICoreWebView2_3: ICoreWebView2_2 {
     /// (importScripts(), fetch(), XHR, etc.) issued from within a worker.
     /// For virtual host mapping to work with service worker, please keep the virtual host name
     /// mappings consistent among all WebViews sharing the same browser instance. As service worker
-    /// works independently of WebViews, we merge mappings from all WebViews when resolving virutal
-    /// host name, inconsistent mappings between WebViews would lead unexpected bevavior.
+    /// works independently of WebViews, we merge mappings from all WebViews when resolving virtual
+    /// host name, inconsistent mappings between WebViews would lead unexpected behavior.
     ///
     /// Due to a current implementation limitation, media files accessed using virtual host name can be
     /// very slow to load.
@@ -1665,6 +2343,8 @@ pub trait ICoreWebView2_3: ICoreWebView2_2 {
     /// Both absolute and relative paths are supported for folderPath. Relative paths are interpreted
     /// as relative to the folder where the exe of the app is in.
     ///
+    /// Note that the folderPath length must not exceed the Windows MAX_PATH limit.
+    ///
     /// accessKind specifies the level of access to resources under the virtual host from other sites.
     ///
     /// For example, after calling
@@ -1674,8 +2354,17 @@ pub trait ICoreWebView2_3: ICoreWebView2_2 {
     ///        COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY);
     /// ```
     /// navigating to `https://appassets.example/my-local-file.html` will
-    /// show content from my-local-file.html in the assets subfolder located on disk under the same
-    /// path as the app's executable file.
+    /// show the content from my-local-file.html in the assets subfolder located on disk under
+    /// the same path as the app's executable file.
+    ///
+    /// DOM elements that want to reference local files will have their host reference virtual host in the source.
+    /// If there are multiple folders being used, define one unique virtual host per folder.
+    /// For example, you can embed a local image like this
+    /// ```cpp
+    ///    WCHAR c_navString[] = L"<img src=\"http://appassets.example/wv2.png\"/>";
+    ///    m_webView->NavigateToString(c_navString);
+    /// ```
+    /// The example above shows the image wv2.png by resolving the folder mapping above.
     ///
     /// You should typically choose virtual host names that are never used by real sites.
     /// If you own a domain such as example.com, another option is to use a subdomain reserved for
@@ -1685,6 +2374,9 @@ pub trait ICoreWebView2_3: ICoreWebView2_2 {
     /// names that are guaranteed to not be used by real sites (for example, .example, .test, and
     /// .invalid.)
     ///
+    /// Note that using `.local` as the top-level domain name will work but can cause a delay
+    /// during navigations. You should avoid using `.local` if you can.
+    ///
     /// Apps should use distinct domain names when mapping folder from different sources that
     /// should be isolated from each other. For instance, the app might use app-file.example for
     /// files that ship as part of the app, and book1.example might be used for files containing
@@ -1692,7 +2384,7 @@ pub trait ICoreWebView2_3: ICoreWebView2_2 {
     /// the app.
     ///
     /// The host name used in the APIs is canonicalized using Chromium's host name parsing logic
-    /// before being used internally.
+    /// before being used internally. For more information see [HTML5 2.6 URLs](https://dev.w3.org/html5/spec-LC/urls.html).
     ///
     /// All host names that are canonicalized to the same string are considered identical.
     /// For example, `EXAMPLE.COM` and `example.com` are treated as the same host name.
@@ -1728,8 +2420,9 @@ pub trait ICoreWebView2_3: ICoreWebView2_2 {
 /// DownloadStarting events.
 #[com_interface("20d02d59-6df2-42dc-bd06-f98a694b1302")]
 pub trait ICoreWebView2_4: ICoreWebView2_3 {
-    /// Raised when a new iframe is created. Use the
-    /// CoreWebView2Frame.add_Destroyed to listen for when this iframe goes
+    /// Raised when a new iframe is created.
+    /// Handle this event to get access to ICoreWebView2Frame objects.
+    /// Use ICoreWebView2Frame.add_Destroyed to listen for when this iframe goes
     /// away.
     unsafe fn add_frame_created(
         &self,
@@ -1809,6 +2502,1278 @@ pub trait ICoreWebView2_5: ICoreWebView2_4 {
     ) -> HRESULT;
 }
 
+/// This interface is an extension of `ICoreWebView2_5` that manages opening
+/// the browser task manager window.
+#[com_interface("499aadac-d92c-4589-8a75-111bfc167795")]
+pub trait ICoreWebView2_6: ICoreWebView2_5 {
+    /// Opens the Browser Task Manager view as a new window in the foreground.
+    /// If the Browser Task Manager is already open, this will bring it into
+    /// the foreground. WebView2 currently blocks the Shift+Esc shortcut for
+    /// opening the task manager. An end user can open the browser task manager
+    /// manually via the `Browser task manager` entry of the DevTools window's
+    /// title bar's context menu.
+    unsafe fn open_task_manager_window(&self) -> HRESULT;
+}
+
+/// This interface is an extension of `ICoreWebView2_6` that supports printing
+/// to PDF.
+#[com_interface("79c24d83-09a3-45ae-9418-487f32a58740")]
+pub trait ICoreWebView2_7: ICoreWebView2_6 {
+    /// Print the current page to PDF asynchronously with the provided settings.
+    /// See `ICoreWebView2PrintSettings` for description of settings. Passing
+    /// nullptr for `printSettings` results in default print settings used.
+    ///
+    /// Use `resultFilePath` to specify the path to the PDF file. The host should
+    /// provide an absolute path, including file name. If the path
+    /// points to an existing file, the file will be overwritten. If the path is
+    /// not valid, the method fails with `E_INVALIDARG`.
+    ///
+    /// The async `PrintToPdf` operation completes when the data has been written
+    /// to the PDF file. At this time the
+    /// `ICoreWebView2PrintToPdfCompletedHandler` is invoked. If the
+    /// application exits before printing is complete, the file is not saved.
+    /// Only one `Printing` operation can be in progress at a time. If
+    /// `PrintToPdf` is called while a `PrintToPdf` or `PrintToPdfStream` or `Print` or
+    /// `ShowPrintUI` job is in progress, the completed handler is immediately invoked
+    /// with `isSuccessful` set to FALSE.
+    ///
+    /// \snippet FileComponent.cpp PrintToPdf
+    unsafe fn print_to_pdf(
+        &self,
+        /* in */ result_file_path: LPCWSTR,
+        /* in */ print_settings: *mut *mut ICoreWebView2PrintSettingsVTable,
+        /* in */ handler: *mut *mut ICoreWebView2PrintToPdfCompletedHandlerVTable,
+    ) -> HRESULT;
+}
+
+/// This interface is an extension of `ICoreWebView2_7` that supports media features.
+#[com_interface("E9632730-6E1E-43AB-B7B8-7B2C9E62E094")]
+pub trait ICoreWebView2_8: ICoreWebView2_7 {
+    /// Adds an event handler for the `IsMutedChanged` event.
+    /// `IsMutedChanged` is raised when the IsMuted property changes value.
+    ///
+    /// \snippet AudioComponent.cpp IsMutedChanged
+    unsafe fn add_is_muted_changed(
+        &self,
+        /* in */ event_handler: *mut *mut ICoreWebView2IsMutedChangedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with `add_IsMutedChanged`.
+    unsafe fn remove_is_muted_changed(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Indicates whether all audio output from this CoreWebView2 is muted or not.
+    ///
+    /// \snippet AudioComponent.cpp ToggleIsMuted
+    unsafe fn get_is_muted(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
+
+    /// Sets the `IsMuted` property.
+    ///
+    /// \snippet AudioComponent.cpp ToggleIsMuted
+    unsafe fn put_is_muted(&self, /* in */ value: BOOL) -> HRESULT;
+
+    /// Adds an event handler for the `IsDocumentPlayingAudioChanged` event.
+    /// `IsDocumentPlayingAudioChanged` is raised when the IsDocumentPlayingAudio property changes value.
+    ///
+    /// \snippet AudioComponent.cpp IsDocumentPlayingAudioChanged
+    unsafe fn add_is_document_playing_audio_changed(
+        &self,
+        /* in */
+        event_handler: *mut *mut ICoreWebView2IsDocumentPlayingAudioChangedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with `add_IsDocumentPlayingAudioChanged`.
+    unsafe fn remove_is_document_playing_audio_changed(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Indicates whether any audio output from this CoreWebView2 is playing.
+    /// This property will be true if audio is playing even if IsMuted is true.
+    ///
+    /// \snippet AudioComponent.cpp IsDocumentPlayingAudio
+    unsafe fn get_is_document_playing_audio(
+        &self,
+        /* out, retval */ value: *mut BOOL,
+    ) -> HRESULT;
+}
+
+/// This interface is an extension of `ICoreWebView2_8` that default download
+/// dialog positioning and anchoring.
+#[com_interface("4d7b2eab-9fdc-468d-b998-a9260b5ed651")]
+pub trait ICoreWebView2_9: ICoreWebView2_8 {
+    /// Raised when the `IsDefaultDownloadDialogOpen` property changes. This event
+    /// comes after the `DownloadStarting` event. Setting the `Handled` property
+    /// on the `DownloadStartingEventArgs` disables the default download dialog
+    /// and ensures that this event is never raised.
+    unsafe fn add_is_default_download_dialog_open_changed(
+        &self,
+        /* in */
+        handler: *mut *mut ICoreWebView2IsDefaultDownloadDialogOpenChangedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with
+    /// `add_IsDefaultDownloadDialogOpenChanged`.
+    unsafe fn remove_is_default_download_dialog_open_changed(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// `TRUE` if the default download dialog is currently open. The value of this
+    /// property changes only when the default download dialog is explicitly
+    /// opened or closed. Hiding the WebView implicitly hides the dialog, but does
+    /// not change the value of this property.
+    unsafe fn get_is_default_download_dialog_open(
+        &self,
+        /* out, retval */ value: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Open the default download dialog. If the dialog is opened before there
+    /// are recent downloads, the dialog shows all past downloads for the
+    /// current profile. Otherwise, the dialog shows only the recent downloads
+    /// with a "See more" button for past downloads. Calling this method raises
+    /// the `IsDefaultDownloadDialogOpenChanged` event if the dialog was closed.
+    /// No effect if the dialog is already open.
+    ///
+    /// \snippet ViewComponent.cpp ToggleDefaultDownloadDialog
+    unsafe fn open_default_download_dialog(&self) -> HRESULT;
+
+    /// Close the default download dialog. Calling this method raises the
+    /// `IsDefaultDownloadDialogOpenChanged` event if the dialog was open. No
+    /// effect if the dialog is already closed.
+    unsafe fn close_default_download_dialog(&self) -> HRESULT;
+
+    /// Get the default download dialog corner alignment.
+    unsafe fn get_default_download_dialog_corner_alignment(
+        &self,
+        /* out, retval */ value: *mut DefaultDownloadDialogCornerAlignment,
+    ) -> HRESULT;
+
+    /// Set the default download dialog corner alignment. The dialog can be
+    /// aligned to any of the WebView corners (see
+    /// COREWEBVIEW2_DEFAULT_DOWNLOAD_DIALOG_CORNER_ALIGNMENT). When the WebView
+    /// or dialog changes size, the dialog keeps its position relative to the
+    /// corner. The dialog may become partially or completely outside of the
+    /// WebView bounds if the WebView is small enough. Set the margin relative to
+    /// the corner with the `DefaultDownloadDialogMargin` property. The corner
+    /// alignment and margin should be set during initialization to ensure that
+    /// they are correctly applied when the layout is first computed, otherwise
+    /// they will not take effect until the next time the WebView position or size
+    /// is updated.
+    ///
+    /// \snippet ViewComponent.cpp SetDefaultDownloadDialogPosition
+    unsafe fn put_default_download_dialog_corner_alignment(
+        &self,
+        /* in */ value: DefaultDownloadDialogCornerAlignment,
+    ) -> HRESULT;
+
+    /// Get the default download dialog margin.
+    unsafe fn get_default_download_dialog_margin(
+        &self,
+        /* out, retval */ value: *mut POINT,
+    ) -> HRESULT;
+
+    /// Set the default download dialog margin relative to the WebView corner
+    /// specified by `DefaultDownloadDialogCornerAlignment`. The margin is a
+    /// point that describes the vertical and horizontal distances between the
+    /// chosen WebView corner and the default download dialog corner nearest to
+    /// it. Positive values move the dialog towards the center of the WebView from
+    /// the chosen WebView corner, and negative values move the dialog away from
+    /// it. Use (0, 0) to align the dialog to the WebView corner with no margin.
+    /// The corner alignment and margin should be set during initialization to
+    /// ensure that they are correctly applied when the layout is first computed,
+    /// otherwise they will not take effect until the next time the WebView
+    /// position or size is updated.
+    unsafe fn put_default_download_dialog_margin(&self, /* in */ value: POINT) -> HRESULT;
+}
+
+/// This interface is an extension of `ICoreWebView2_9` that supports
+/// BasicAuthenticationRequested event.
+#[com_interface("b1690564-6f5a-4983-8e48-31d1143fecdb")]
+pub trait ICoreWebView2_10: ICoreWebView2_9 {
+    /// Add an event handler for the BasicAuthenticationRequested event.
+    /// BasicAuthenticationRequested event is raised when WebView encounters a
+    /// Basic HTTP Authentication request as described in
+    /// https://developer.mozilla.org/docs/Web/HTTP/Authentication, a Digest
+    /// HTTP Authentication request as described in
+    /// https://developer.mozilla.org/docs/Web/HTTP/Headers/Authorization#digest,
+    /// an NTLM authentication or a Proxy Authentication request.
+    ///
+    /// The host can provide a response with credentials for the authentication or
+    /// cancel the request. If the host sets the Cancel property to false but does not
+    /// provide either UserName or Password properties on the Response property, then
+    /// WebView2 will show the default authentication challenge dialog prompt to
+    /// the user.
+    ///
+    /// \snippet ScenarioAuthentication.cpp BasicAuthenticationRequested
+    unsafe fn add_basic_authentication_requested(
+        &self,
+        /* in */
+        event_handler: *mut *mut ICoreWebView2BasicAuthenticationRequestedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with add_BasicAuthenticationRequested.
+    unsafe fn remove_basic_authentication_requested(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+}
+
+/// This interface is an extension of `ICoreWebView2_10` that supports sessionId
+/// for CDP method calls and ContextMenuRequested event.
+#[com_interface("0be78e56-c193-4051-b943-23b460c08bdb")]
+pub trait ICoreWebView2_11: ICoreWebView2_10 {
+    /// Runs an asynchronous `DevToolsProtocol` method for a specific session of
+    /// an attached target.
+    /// There could be multiple `DevToolsProtocol` targets in a WebView.
+    /// Besides the top level page, iframes from different origin and web workers
+    /// are also separate targets. Attaching to these targets allows interaction with them.
+    /// When the DevToolsProtocol is attached to a target, the connection is identified
+    /// by a sessionId.
+    /// To use this API, you must set the `flatten` parameter to true when calling
+    /// `Target.attachToTarget` or `Target.setAutoAttach` `DevToolsProtocol` method.
+    /// Using `Target.setAutoAttach` is recommended as that would allow you to attach
+    /// to dedicated worker targets, which are not discoverable via other APIs like
+    /// `Target.getTargets`.
+    /// For more information about targets and sessions, navigate to
+    /// [DevTools Protocol Viewer](https://chromedevtools.github.io/devtools-protocol/tot/Target).
+    /// For more information about available methods, navigate to
+    /// [DevTools Protocol Viewer](https://chromedevtools.github.io/devtools-protocol/tot)
+    /// The `sessionId` parameter is the sessionId for an attached target.
+    /// nullptr or empty string is treated as the session for the default target for the top page.
+    /// The `methodName` parameter is the full name of the method in the
+    /// `{domain}.{method}` format.  The `parametersAsJson` parameter is a JSON
+    /// formatted string containing the parameters for the corresponding method.
+    /// The `Invoke` method of the `handler` is run when the method
+    /// asynchronously completes.  `Invoke` is run with the return object of the
+    /// method as a JSON string.  This function returns E_INVALIDARG if the `methodName` is
+    /// unknown or the `parametersAsJson` has an error.  In the case of such an error, the
+    /// `returnObjectAsJson` parameter of the handler will include information
+    /// about the error.
+    ///
+    /// \snippet ScriptComponent.cpp DevToolsProtocolMethodMultiSession
+    ///
+    /// \snippet ScriptComponent.cpp CallDevToolsProtocolMethodForSession
+    unsafe fn call_dev_tools_protocol_method_for_session(
+        &self,
+        /* in */ session_id: LPCWSTR,
+        /* in */ method_name: LPCWSTR,
+        /* in */ parameters_as_json: LPCWSTR,
+        /* in */
+        handler: *mut *mut ICoreWebView2CallDevToolsProtocolMethodCompletedHandlerVTable,
+    ) -> HRESULT;
+
+    /// Add an event handler for the `ContextMenuRequested` event.
+    /// `ContextMenuRequested` event is raised when a context menu is requested by the user
+    /// and the content inside WebView hasn't disabled context menus.
+    /// The host has the option to create their own context menu with the information provided in
+    /// the event or can add items to or remove items from WebView context menu.
+    /// If the host doesn't handle the event, WebView will display the default context menu.
+    ///
+    /// \snippet SettingsComponent.cpp EnableCustomMenu
+    unsafe fn add_context_menu_requested(
+        &self,
+        /* in */
+        event_handler: *mut *mut ICoreWebView2ContextMenuRequestedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with `add_ContextMenuRequested`.
+    unsafe fn remove_context_menu_requested(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+}
+
+/// This interface is an extension of `ICoreWebView2_11` that supports
+/// StatusBarTextChanged event.
+#[com_interface("35D69927-BCFA-4566-9349-6B3E0D154CAC")]
+pub trait ICoreWebView2_12: ICoreWebView2_11 {
+    /// Add an event handler for the `StatusBarTextChanged` event.
+    /// `StatusBarTextChanged` fires when the WebView is showing a status message,
+    /// a URL, or an empty string (an indication to hide the status bar).
+    /// \snippet SettingsComponent.cpp StatusBarTextChanged
+    unsafe fn add_status_bar_text_changed(
+        &self,
+        /* in */
+        event_handler: *mut *mut ICoreWebView2StatusBarTextChangedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with `add_StatusBarTextChanged`.
+    unsafe fn remove_status_bar_text_changed(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// The status message text.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_status_bar_text(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+}
+
+/// This interface is an extension of `ICoreWebView2_12` that supports Profile
+/// API.
+#[com_interface("F75F09A8-667E-4983-88D6-C8773F315E84")]
+pub trait ICoreWebView2_13: ICoreWebView2_12 {
+    /// The associated `ICoreWebView2Profile` object. If this CoreWebView2 was created with a
+    /// CoreWebView2ControllerOptions, the CoreWebView2Profile will match those specified options.
+    /// Otherwise if this CoreWebView2 was created without a CoreWebView2ControllerOptions, then
+    /// this will be the default CoreWebView2Profile for the corresponding CoreWebView2Environment.
+    ///
+    /// \snippet AppWindow.cpp CoreWebView2Profile
+    unsafe fn get_profile(
+        &self,
+        /* out, retval */ value: *mut *mut *mut ICoreWebView2ProfileVTable,
+    ) -> HRESULT;
+}
+
+/// This interface is an extension of `ICoreWebView2_13` that adds
+/// ServerCertificate support.
+#[com_interface("6DAA4F10-4A90-4753-8898-77C5DF534165")]
+pub trait ICoreWebView2_14: ICoreWebView2_13 {
+    /// Add an event handler for the ServerCertificateErrorDetected event.
+    /// The ServerCertificateErrorDetected event is raised when the WebView2
+    /// cannot verify server's digital certificate while loading a web page.
+    ///
+    /// This event will raise for all web resources and follows the `WebResourceRequested` event.
+    ///
+    /// If you don't handle the event, WebView2 will show the default TLS interstitial error page to the user
+    /// for navigations, and for non-navigations the web request is cancelled.
+    ///
+    /// Note that WebView2 before raising `ServerCertificateErrorDetected` raises a `NavigationCompleted` event
+    /// with `IsSuccess` as FALSE and any of the below WebErrorStatuses that indicate a certificate failure.
+    ///
+    /// - COREWEBVIEW2_WEB_ERROR_STATUS_CERTIFICATE_COMMON_NAME_IS_INCORRECT
+    /// - COREWEBVIEW2_WEB_ERROR_STATUS_CERTIFICATE_EXPIRED
+    /// - COREWEBVIEW2_WEB_ERROR_STATUS_CLIENT_CERTIFICATE_CONTAINS_ERRORS
+    /// - COREWEBVIEW2_WEB_ERROR_STATUS_CERTIFICATE_REVOKED
+    /// - COREWEBVIEW2_WEB_ERROR_STATUS_CERTIFICATE_IS_INVALID
+    ///
+    /// For more details see `ICoreWebView2NavigationCompletedEventArgs::get_IsSuccess` and handle
+    /// ServerCertificateErrorDetected event or show the default TLS interstitial error page to the user
+    /// according to the app needs.
+    ///
+    /// WebView2 caches the response when action is `COREWEBVIEW2_SERVER_CERTIFICATE_ERROR_ACTION_ALWAYS_ALLOW`
+    /// for the RequestUri's host and the server certificate in the session and the `ServerCertificateErrorDetected`
+    /// event won't be raised again.
+    ///
+    /// To raise the event again you must clear the cache using `ClearServerCertificateErrorActions`.
+    ///
+    /// \snippet SettingsComponent.cpp ServerCertificateErrorDetected1
+    unsafe fn add_server_certificate_error_detected(
+        &self,
+        /* in */
+        event_handler: *mut *mut ICoreWebView2ServerCertificateErrorDetectedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with add_ServerCertificateErrorDetected.
+    unsafe fn remove_server_certificate_error_detected(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Clears all cached decisions to proceed with TLS certificate errors from the
+    /// ServerCertificateErrorDetected event for all WebView2's sharing the same session.
+    unsafe fn clear_server_certificate_error_actions(
+        &self,
+        /* in */
+        handler: *mut *mut ICoreWebView2ClearServerCertificateErrorActionsCompletedHandlerVTable,
+    ) -> HRESULT;
+}
+
+/// Receives `StatusBarTextChanged` events.
+#[com_interface("A5E3B0D0-10DF-4156-BFAD-3B43867ACAC6")]
+pub trait ICoreWebView2StatusBarTextChangedEventHandler: IUnknown {
+    /// Called to provide the implementer with the event args for the
+    /// corresponding event. No event args exist and the `args`
+    /// parameter is set to `null`.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2VTable,
+        /* in */ args: *mut *mut IUnknownVTable,
+    ) -> HRESULT;
+}
+
+/// This interface is an extension of `ICoreWebView2_14` that supports status Favicons.
+#[com_interface("517B2D1D-7DAE-4A66-A4F4-10352FFB9518")]
+pub trait ICoreWebView2_15: ICoreWebView2_14 {
+    /// Add an event handler for the `FaviconChanged` event.
+    /// The `FaviconChanged` event is raised when the
+    /// [favicon](https://developer.mozilla.org/docs/Glossary/Favicon)
+    /// had a different URL then the previous URL.
+    /// The FaviconChanged event will be raised for first navigating to a new
+    /// document, whether or not a document declares a Favicon in HTML if the
+    /// favicon is different from the previous fav icon. The event will
+    /// be raised again if a favicon is declared in its HTML or has script
+    /// to set its favicon. The favicon information can then be retrieved with
+    /// `GetFavicon` and `FaviconUri`.
+    unsafe fn add_favicon_changed(
+        &self,
+        /* in */ event_handler: *mut *mut ICoreWebView2FaviconChangedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove the event handler for `FaviconChanged` event.
+    unsafe fn remove_favicon_changed(&self, /* in */ token: EventRegistrationToken) -> HRESULT;
+
+    /// Get the current Uri of the favicon as a string.
+    /// If the value is null, then the return value is `E_POINTER`, otherwise it is `S_OK`.
+    /// If a page has no favicon then the value is an empty string.
+    unsafe fn get_favicon_uri(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// Async function for getting the actual image data of the favicon.
+    /// The image is copied to the `imageStream` object in `ICoreWebView2GetFaviconCompletedHandler`.
+    /// If there is no image then no data would be copied into the imageStream.
+    /// The `format` is the file format to return the image stream.
+    /// `completedHandler` is executed at the end of the operation.
+    ///
+    /// \snippet SettingsComponent.cpp FaviconChanged
+    unsafe fn get_favicon(
+        &self,
+        /* in */ format: FaviconImageFormat,
+        /* in */ completed_handler: *mut *mut ICoreWebView2GetFaviconCompletedHandlerVTable,
+    ) -> HRESULT;
+}
+
+/// A continuation of the `ICoreWebView2` interface to support printing.
+#[com_interface("0EB34DC9-9F91-41E1-8639-95CD5943906B")]
+pub trait ICoreWebView2_16: ICoreWebView2_15 {
+    /// Print the current web page asynchronously to the specified printer with the provided settings.
+    /// See `ICoreWebView2PrintSettings` for description of settings. Passing
+    /// nullptr for `printSettings` results in default print settings used.
+    ///
+    /// The handler will return `errorCode` as `S_OK` and `printStatus` as COREWEBVIEW2_PRINT_STATUS_PRINTER_UNAVAILABLE
+    /// if `printerName` doesn't match with the name of any installed printers on the user OS. The handler
+    /// will return `errorCode` as `E_INVALIDARG` and `printStatus` as COREWEBVIEW2_PRINT_STATUS_OTHER_ERROR
+    /// if the caller provides invalid settings for a given printer.
+    ///
+    /// The async `Print` operation completes when it finishes printing to the printer.
+    /// At this time the `ICoreWebView2PrintCompletedHandler` is invoked.
+    /// Only one `Printing` operation can be in progress at a time. If `Print` is called while a `Print` or `PrintToPdf`
+    /// or `PrintToPdfStream` or `ShowPrintUI` job is in progress, the completed handler is immediately invoked
+    /// with `E_ABORT` and `printStatus` is COREWEBVIEW2_PRINT_STATUS_OTHER_ERROR.
+    /// This is only for printing operation on one webview.
+    ///
+    /// |       errorCode     |      printStatus                              |               Notes                                                                           |
+    /// | --- | --- | --- |
+    /// |        S_OK         | COREWEBVIEW2_PRINT_STATUS_SUCCEEDED           | Print operation succeeded.                                                                    |
+    /// |        S_OK         | COREWEBVIEW2_PRINT_STATUS_PRINTER_UNAVAILABLE | If specified printer is not found or printer status is not available, offline or error state. |
+    /// |        S_OK         | COREWEBVIEW2_PRINT_STATUS_OTHER_ERROR         | Print operation is failed.                                                                    |
+    /// |     E_INVALIDARG    | COREWEBVIEW2_PRINT_STATUS_OTHER_ERROR         | If the caller provides invalid settings for the specified printer.                            |
+    /// |       E_ABORT       | COREWEBVIEW2_PRINT_STATUS_OTHER_ERROR         | Print operation is failed as printing job already in progress.                                |
+    ///
+    /// \snippet AppWindow.cpp PrintToPrinter
+    unsafe fn print(
+        &self,
+        /* in */ print_settings: *mut *mut ICoreWebView2PrintSettingsVTable,
+        /* in */ handler: *mut *mut ICoreWebView2PrintCompletedHandlerVTable,
+    ) -> HRESULT;
+
+    /// Opens the print dialog to print the current web page. See `COREWEBVIEW2_PRINT_DIALOG_KIND`
+    /// for descriptions of print dialog kinds.
+    ///
+    /// Invoking browser or system print dialog doesn't open new print dialog if
+    /// it is already open.
+    ///
+    /// \snippet AppWindow.cpp ShowPrintUI
+    unsafe fn show_print_ui(&self, /* in */ print_dialog_kind: PrintDialogKind) -> HRESULT;
+
+    /// Provides the Pdf data of current web page asynchronously for the provided settings.
+    /// Stream will be rewound to the start of the pdf data.
+    ///
+    /// See `ICoreWebView2PrintSettings` for description of settings. Passing
+    /// nullptr for `printSettings` results in default print settings used.
+    ///
+    /// The async `PrintToPdfStream` operation completes when it finishes
+    /// writing to the stream. At this time the `ICoreWebView2PrintToPdfStreamCompletedHandler`
+    /// is invoked. Only one `Printing` operation can be in progress at a time. If
+    /// `PrintToPdfStream` is called while a `PrintToPdfStream` or `PrintToPdf` or `Print`
+    /// or `ShowPrintUI` job is in progress, the completed handler is immediately invoked with `E_ABORT`.
+    /// This is only for printing operation on one webview.
+    ///
+    /// \snippet AppWindow.cpp PrintToPdfStream
+    unsafe fn print_to_pdf_stream(
+        &self,
+        /* in */ print_settings: *mut *mut ICoreWebView2PrintSettingsVTable,
+        /* in */ handler: *mut *mut ICoreWebView2PrintToPdfStreamCompletedHandlerVTable,
+    ) -> HRESULT;
+}
+
+/// Receives the result of the `Print` method.
+#[com_interface("8FD80075-ED08-42DB-8570-F5D14977461E")]
+pub trait ICoreWebView2PrintCompletedHandler: IUnknown {
+    /// Provides the result of the corresponding asynchronous method.
+    unsafe fn invoke(
+        &self,
+        /* in */ error_code: HRESULT,
+        /* in */ print_status: PrintStatus,
+    ) -> HRESULT;
+}
+
+/// This interface is an extension of `ICoreWebView2_16` that supports shared buffer based on file mapping.
+#[com_interface("702E75D4-FD44-434D-9D70-1A68A6B1192A")]
+pub trait ICoreWebView2_17: ICoreWebView2_16 {
+    /// Share a shared buffer object with script of the main frame in the WebView.
+    /// The script will receive a `sharedbufferreceived` event from chrome.webview.
+    /// The event arg for that event will have the following methods and properties:
+    ///   `getBuffer()`: return an ArrayBuffer object with the backing content from the shared buffer.
+    ///   `additionalData`: an object as the result of parsing `additionalDataAsJson` as JSON string.
+    ///           This property will be `undefined` if `additionalDataAsJson` is nullptr or empty string.
+    ///   `source`: with a value set as `chrome.webview` object.
+    /// If a string is provided as `additionalDataAsJson` but it is not a valid JSON string,
+    /// the API will fail with `E_INVALIDARG`.
+    /// If `access` is COREWEBVIEW2_SHARED_BUFFER_ACCESS_READ_ONLY, the script will only have read access to the buffer.
+    /// If the script tries to modify the content in a read only buffer, it will cause an access
+    /// violation in WebView renderer process and crash the renderer process.
+    /// If the shared buffer is already closed, the API will fail with `RO_E_CLOSED`.
+    ///
+    /// The script code should call `chrome.webview.releaseBuffer` with
+    /// the shared buffer as the parameter to release underlying resources as soon
+    /// as it does not need access to the shared buffer any more.
+    ///
+    /// The application can post the same shared buffer object to multiple web pages or iframes, or
+    /// post to the same web page or iframe multiple times. Each `PostSharedBufferToScript` will
+    /// create a separate ArrayBuffer object with its own view of the memory and is separately
+    /// released. The underlying shared memory will be released when all the views are released.
+    ///
+    /// For example, if we want to send data to script for one time read only consumption.
+    ///
+    /// \snippet ScenarioSharedBuffer.cpp OneTimeShareBuffer
+    ///
+    /// In the HTML document,
+    ///
+    /// \snippet assets\ScenarioSharedBuffer.html ShareBufferScriptCode_1
+    ///
+    /// \snippet assets\ScenarioSharedBuffer.html ShareBufferScriptCode_2
+    ///
+    /// Sharing a buffer to script has security risk. You should only share buffer with trusted site.
+    /// If a buffer is shared to a untrusted site, possible sensitive information could be leaked.
+    /// If a buffer is shared as modifiable by the script and the script modifies it in an unexpected way,
+    /// it could result in corrupted data that might even crash the application.
+    ///
+    unsafe fn post_shared_buffer_to_script(
+        &self,
+        /* in */ shared_buffer: *mut *mut ICoreWebView2SharedBufferVTable,
+        /* in */ access: SharedBufferAccess,
+        /* in */ additional_data_as_json: LPCWSTR,
+    ) -> HRESULT;
+}
+
+/// Receives the result of the `PrintToPdfStream` method.
+/// `errorCode` returns S_OK if the PrintToPdfStream operation succeeded.
+/// The printable pdf data is returned in the `pdfStream` object.
+#[com_interface("4C9F8229-8F93-444F-A711-2C0DFD6359D5")]
+pub trait ICoreWebView2PrintToPdfStreamCompletedHandler: IUnknown {
+    /// Provides the result of the corresponding asynchronous method.
+    unsafe fn invoke(
+        &self,
+        /* in */ error_code: HRESULT,
+        /* in */ pdf_stream: *mut *mut IStreamVTable,
+    ) -> HRESULT;
+}
+
+/// Settings used by the `Print` method.
+#[com_interface("CA7F0E1F-3484-41D1-8C1A-65CD44A63F8D")]
+pub trait ICoreWebView2PrintSettings2: ICoreWebView2PrintSettings {
+    /// Page range to print. Defaults to empty string, which means print all pages.
+    /// If the Page range is empty string or null, then it applies the default.
+    ///
+    /// The PageRanges property is a list of page ranges specifying one or more pages that
+    /// should be printed separated by commas. Any whitespace between page ranges is ignored.
+    /// A valid page range is either a single integer identifying the page to print, or a range
+    /// in the form `[start page]-[last page]` where `start page` and `last page` are integers
+    /// identifying the first and last inclusive pages respectively to print.
+    /// Every page identifier is an integer greater than 0 unless wildcards are used (see below examples).
+    /// The first page is 1.
+    ///
+    /// In a page range of the form `[start page]-[last page]` the start page number must be
+    /// larger than 0 and less than or equal to the document's total page count.
+    /// If the `start page` is not present, then 1 is used as the `start page`.
+    /// The `last page` must be larger than the `start page`.
+    /// If the `last page` is not present, then the document total page count is used as the `last page`.
+    ///
+    /// Repeating a page does not print it multiple times. To print multiple times, use the `Copies` property.
+    ///
+    /// The pages are always printed in ascending order, even if specified in non-ascending order.
+    ///
+    /// If page range is not valid or if a page is greater than document total page count,
+    /// `ICoreWebView2PrintCompletedHandler` or `ICoreWebView2PrintToPdfStreamCompletedHandler`
+    /// handler will return `E_INVALIDARG`.
+    ///
+    /// The following examples assume a document with 20 total pages.
+    ///
+    /// |       Example         |       Result      |               Notes                                              |
+    /// | --- | --- | --- |
+    /// | "2"                   |  Page 2           |                                                                  |
+    /// | "1-4, 9, 3-6, 10, 11" |  Pages 1-6, 9-11  |                                                                  |
+    /// | "1-4, -6"             |  Pages 1-6        | The "-6" is interpreted as "1-6".                                |
+    /// | "2-"                  |  Pages 2-20       | The "2-" is interpreted as "pages 2 to the end of the document". |
+    /// | "4-2, 11, -6"         |  Invalid          | "4-2" is an invalid range.                                       |
+    /// | "-"                   |  Pages 1-20       | The "-" is interpreted as "page 1 to the end of the document".   |
+    /// | "1-4dsf, 11"          |  Invalid          |                                                                  |
+    /// | "2-2"                 |  Page 2           |                                                                  |
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`. See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings)
+    unsafe fn get_page_ranges(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// Set the `PageRanges` property.
+    unsafe fn put_page_ranges(&self, /* in */ value: LPCWSTR) -> HRESULT;
+
+    /// Prints multiple pages of a document on a single piece of paper. Choose from 1, 2, 4, 6, 9 or 16.
+    /// The default value is 1.
+    unsafe fn get_pages_per_side(&self, /* out, retval */ value: *mut i32) -> HRESULT;
+
+    /// Set the `PagesPerSide` property. Returns `E_INVALIDARG` if an invalid value is
+    /// provided, and the current value is not changed.
+    ///
+    /// Below examples shows print output for PagesPerSide and Duplex.
+    ///
+    /// |  PagesPerSide   |    Total pages   | Two-sided printing |              Result                                               |
+    /// | --- | --- | --- | --- |
+    /// |      1          |      1           |        -           | 1 page on the front side.                                         |
+    /// |      2          |      1           |        Yes         | 1 page on the front side.                                         |
+    /// |      2          |      4           |        -           | 2 pages on the first paper and 2 pages on the next paper.         |
+    /// |      2          |      4           |        Yes         | 2 pages on the front side and 2 pages on back side.               |
+    /// |      4          |      4           |        Yes         | 4 pages on the front side.                                        |
+    /// |      4          |      8           |        Yes         | 4 pages on the front side and 4 pages on the back side.           |
+    unsafe fn put_pages_per_side(&self, /* in */ value: i32) -> HRESULT;
+
+    /// Number of copies to print. Minimum value is `1` and the maximum copies count is `999`.
+    /// The default value is 1.
+    ///
+    /// This value is ignored in PrintToPdfStream method.
+    unsafe fn get_copies(&self, /* out, retval */ value: *mut i32) -> HRESULT;
+
+    /// Set the `Copies` property. Returns `E_INVALIDARG` if an invalid value is provided
+    /// and the current value is not changed.
+    unsafe fn put_copies(&self, /* in */ value: i32) -> HRESULT;
+
+    /// Printer collation. See `COREWEBVIEW2_PRINT_COLLATION` for descriptions of
+    /// collation. The default value is `COREWEBVIEW2_PRINT_COLLATION_DEFAULT`.
+    ///
+    /// Printing uses default value of printer's collation if an invalid value is provided
+    /// for the specific printer.
+    ///
+    /// This value is ignored in PrintToPdfStream method.
+    unsafe fn get_collation(&self, /* out, retval */ value: *mut PrintCollation) -> HRESULT;
+
+    /// Set the `Collation` property.
+    unsafe fn put_collation(&self, /* in */ value: PrintCollation) -> HRESULT;
+
+    /// Printer color mode. See `COREWEBVIEW2_PRINT_COLOR_MODE` for descriptions
+    /// of color modes. The default value is `COREWEBVIEW2_PRINT_COLOR_MODE_DEFAULT`.
+    ///
+    /// Printing uses default value of printer supported color if an invalid value is provided
+    /// for the specific printer.
+    unsafe fn get_color_mode(&self, /* out, retval */ value: *mut PrintColorMode) -> HRESULT;
+
+    /// Set the `ColorMode` property.
+    unsafe fn put_color_mode(&self, /* in */ value: PrintColorMode) -> HRESULT;
+
+    /// Printer duplex settings. See `COREWEBVIEW2_PRINT_DUPLEX` for descriptions of duplex.
+    /// The default value is `COREWEBVIEW2_PRINT_DUPLEX_DEFAULT`.
+    ///
+    /// Printing uses default value of printer's duplex if an invalid value is provided
+    /// for the specific printer.
+    ///
+    /// This value is ignored in PrintToPdfStream method.
+    unsafe fn get_duplex(&self, /* out, retval */ value: *mut PrintDuplex) -> HRESULT;
+
+    /// Set the `Duplex` property.
+    unsafe fn put_duplex(&self, /* in */ value: PrintDuplex) -> HRESULT;
+
+    /// Printer media size. See `COREWEBVIEW2_PRINT_MEDIA_SIZE` for descriptions of media size.
+    /// The default value is `COREWEBVIEW2_PRINT_MEDIA_SIZE_DEFAULT`.
+    ///
+    /// If media size is `COREWEBVIEW2_PRINT_MEDIA_SIZE_CUSTOM`, you should set the `PageWidth`
+    /// and `PageHeight`.
+    ///
+    /// Printing uses default value of printer supported media size if an invalid value is provided
+    /// for the specific printer.
+    ///
+    /// This value is ignored in PrintToPdfStream method.
+    unsafe fn get_media_size(&self, /* out, retval */ value: *mut PrintMediaSize) -> HRESULT;
+
+    /// Set the `MediaSize` property.
+    unsafe fn put_media_size(&self, /* in */ value: PrintMediaSize) -> HRESULT;
+
+    /// The name of the printer to use. Defaults to empty string.
+    /// If the printer name is empty string or null, then it prints to the default
+    /// printer on the user OS.
+    ///
+    /// This value is ignored in PrintToPdfStream method.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`. See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings)
+    unsafe fn get_printer_name(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// Set the `PrinterName` property. If provided printer name doesn't match
+    /// with the name of any installed printers on the user OS,
+    /// `ICoreWebView2PrintCompletedHandler` handler will return `errorCode` as
+    /// `S_OK` and `printStatus` as COREWEBVIEW2_PRINT_STATUS_PRINTER_UNAVAILABLE.
+    ///
+    /// Use [Enum Printers](/windows/win32/printdocs/enumprinters)
+    /// to enumerate available printers.
+    unsafe fn put_printer_name(&self, /* in */ value: LPCWSTR) -> HRESULT;
+}
+
+/// This interface is an extension of `ICoreWebView2_17` that manages
+/// navigation requests to URI schemes registered with the OS.
+#[com_interface("7A626017-28BE-49B2-B865-3BA2B3522D90")]
+pub trait ICoreWebView2_18: ICoreWebView2_17 {
+    /// Add an event handler for the `LaunchingExternalUriScheme` event.
+    /// The `LaunchingExternalUriScheme` event is raised when a navigation request is made to
+    /// a URI scheme that is registered with the OS.
+    /// The `LaunchingExternalUriScheme` event handler may suppress the default dialog
+    /// or replace the default dialog with a custom dialog.
+    ///
+    /// If a deferral is not taken on the event args, the external URI scheme launch is
+    /// blocked until the event handler returns.  If a deferral is taken, the
+    /// external URI scheme launch is blocked until the deferral is completed.
+    /// The host also has the option to cancel the URI scheme launch.
+    ///
+    /// The `NavigationStarting` and `NavigationCompleted` events will be raised,
+    /// regardless of whether the `Cancel` property is set to `TRUE` or
+    /// `FALSE`. The `NavigationCompleted` event will be raised with the `IsSuccess` property
+    /// set to `FALSE` and the `WebErrorStatus` property set to `ConnectionAborted` regardless of
+    /// whether the host sets the `Cancel` property on the
+    /// `ICoreWebView2LaunchingExternalUriSchemeEventArgs`. The `SourceChanged`, `ContentLoading`,
+    /// and `HistoryChanged` events will not be raised for this navigation to the external URI
+    /// scheme regardless of the `Cancel` property.
+    /// The `LaunchingExternalUriScheme` event will be raised after the
+    /// `NavigationStarting` event and before the `NavigationCompleted` event.
+    /// The default `CoreWebView2Settings` will also be updated upon navigation to an external
+    /// URI scheme. If a setting on the `CoreWebView2Settings` interface has been changed,
+    /// navigating to an external URI scheme will trigger the `CoreWebView2Settings` to update.
+    ///
+    /// The WebView2 may not display the default dialog based on user settings, browser settings,
+    /// and whether the origin is determined as a
+    /// [trustworthy origin](https://w3c.github.io/webappsec-secure-contexts#
+    /// potentially-trustworthy-origin); however, the event will still be raised.
+    ///
+    /// If the request is initiated by a cross-origin frame without a user gesture,
+    /// the request will be blocked and the `LaunchingExternalUriScheme` event will not
+    /// be raised. A URI scheme may be blocked for safety reasons. In this case the
+    /// `LaunchingExternalUriScheme` event will not be raised. The default dialog may show
+    /// an "always allow" checkbox which allows the user to opt-in to relaxed security
+    /// (i.e. skipping future default dialogs) for the combination of the URI scheme and the
+    /// origin of the page initiating this external URI scheme launch. The checkbox is offered
+    /// so long as the group policy to show the checkbox is not explicitly disabled and there
+    /// is a trustworthy initiating origin. If the user has checked this box, future attempts
+    /// to launch this URI scheme will still raise the event.
+    /// \snippet SettingsComponent.cpp ToggleLaunchingExternalUriScheme
+    unsafe fn add_launching_external_uri_scheme(
+        &self,
+        /* in */
+        event_handler: *mut *mut ICoreWebView2LaunchingExternalUriSchemeEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with
+    /// `add_LaunchingExternalUriScheme`.
+    unsafe fn remove_launching_external_uri_scheme(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+}
+
+/// This interface is an extension of `ICoreWebView2_18` that manages memory usage
+/// target level.
+#[com_interface("6921F954-79B0-437F-A997-C85811897C68")]
+pub trait ICoreWebView2_19: ICoreWebView2_18 {
+    /// `MemoryUsageTargetLevel` indicates desired memory consumption level of
+    /// WebView.
+    unsafe fn get_memory_usage_target_level(
+        &self,
+        /* out, retval */ level: *mut MemoryUsageTargetLevel,
+    ) -> HRESULT;
+
+    /// An app may set `MemoryUsageTargetLevel` to indicate desired memory
+    /// consumption level of WebView. Scripts will not be impacted and continue
+    /// to run. This is useful for inactive apps that still want to run scripts
+    /// and/or keep network connections alive and therefore could not call
+    /// `TrySuspend` and `Resume` to reduce memory consumption. These apps can
+    /// set memory usage target level to `COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW`
+    /// when the app becomes inactive, and set back to
+    /// `COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL` when the app becomes
+    /// active. It is not necessary to set CoreWebView2Controller's IsVisible
+    /// property to false when setting the property.
+    /// It is a best effort operation to change memory usage level, and the
+    /// API will return before the operation completes.
+    /// Setting the level to `COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW`
+    /// could potentially cause memory for some WebView browser processes to be
+    /// swapped out to disk in some circumstances.
+    /// It is a best effort to reduce memory usage as much as possible. If a script
+    /// runs after its related memory has been swapped out, the memory will be swapped
+    /// back in to ensure the script can still run, but performance might be impacted.
+    /// Therefore, the app should set the level back to
+    /// `COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL` when the app becomes
+    /// active again. Setting memory usage target level back to normal will not happen
+    /// automatically.
+    /// An app should choose to use either the combination of `TrySuspend` and `Resume`
+    /// or the combination of setting MemoryUsageTargetLevel to low and normal. It is
+    /// not advisable to mix them.
+    /// Trying to set `MemoryUsageTargetLevel` while suspended will be ignored.
+    /// The `TrySuspend` and `Resume` methods will change the `MemoryUsageTargetLevel`.
+    /// `TrySuspend` will automatically set `MemoryUsageTargetLevel` to low while
+    /// `Resume` on suspended WebView will automatically set `MemoryUsageTargetLevel`
+    /// to normal. Calling `Resume` when the WebView is not suspended would not change
+    /// `MemoryUsageTargetLevel`.
+    ///
+    /// \snippet ViewComponent.cpp MemoryUsageTargetLevel
+    unsafe fn put_memory_usage_target_level(
+        &self,
+        /* in */ level: MemoryUsageTargetLevel,
+    ) -> HRESULT;
+}
+
+/// This interface is an extension of `ICoreWebView2_19` that provides the `FrameId` property.
+#[com_interface("b4bc1926-7305-11ee-b962-0242ac120002")]
+pub trait ICoreWebView2_20: ICoreWebView2_19 {
+    /// The unique identifier of the main frame. It's the same kind of ID as
+    /// with the `FrameId` in `CoreWebView2Frame` and via `CoreWebView2FrameInfo`.
+    /// Note that `FrameId` may not be valid if `CoreWebView2` has not done
+    /// any navigation. It's safe to get this value during or after the first
+    /// `ContentLoading` event. Otherwise, it could return the invalid frame Id 0.
+    unsafe fn get_frame_id(&self, /* out, retval */ id: *mut u32) -> HRESULT;
+}
+
+/// This is the interface for getting string and exception with ExecuteScriptWithResult.
+#[com_interface("c4980dea-587b-43b9-8143-3ef3bf552d95")]
+pub trait ICoreWebView2_21: ICoreWebView2_20 {
+    /// Run JavaScript code from the JavaScript parameter in the current
+    /// top-level document rendered in the WebView.
+    /// The result of the execution is returned asynchronously in the CoreWebView2ExecuteScriptResult object
+    /// which has methods and properties to obtain the successful result of script execution as well as any
+    /// unhandled JavaScript exceptions.
+    /// If this method is
+    /// run after the NavigationStarting event during a navigation, the script
+    /// runs in the new document when loading it, around the time
+    /// ContentLoading is run. This operation executes the script even if
+    /// ICoreWebView2Settings::IsScriptEnabled is set to FALSE.
+    ///
+    /// \snippet ScriptComponent.cpp ExecuteScriptWithResult
+    unsafe fn execute_script_with_result(
+        &self,
+        /* in */ java_script: LPCWSTR,
+        /* in */
+        handler: *mut *mut ICoreWebView2ExecuteScriptWithResultCompletedHandlerVTable,
+    ) -> HRESULT;
+}
+
+/// This interface represents a JavaScript exception.
+/// If the CoreWebView2.ExecuteScriptWithResult result has Succeeded as false,
+/// you can use the result's Exception property to get the script exception.
+#[com_interface("054DAE00-84A3-49FF-BC17-4012A90BC9FD")]
+pub trait ICoreWebView2ScriptException: IUnknown {
+    /// The line number of the source where the exception occurred.
+    /// In the JSON it is `exceptionDetail.lineNumber`.
+    /// Note that this position starts at 0.
+    unsafe fn get_line_number(&self, /* out, retval */ value: *mut u32) -> HRESULT;
+
+    /// The column number of the source where the exception occurred.
+    /// In the JSON it is `exceptionDetail.columnNumber`.
+    /// Note that this position starts at 0.
+    unsafe fn get_column_number(&self, /* out, retval */ value: *mut u32) -> HRESULT;
+
+    /// The Name is the exception's class name.
+    /// In the JSON it is `exceptionDetail.exception.className`.
+    /// This is the empty string if the exception doesn't have a class name.
+    /// This can happen if the script throws a non-Error object such as `throw "abc";`
+    unsafe fn get_name(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// The Message is the exception's message and potentially stack.
+    /// In the JSON it is exceptionDetail.exception.description.
+    /// This is the empty string if the exception doesn't have a description.
+    /// This can happen if the script throws a non-Error object such as throw "abc";.
+    unsafe fn get_message(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// This will return all details of the exception as a JSON string.
+    /// In the case that script has thrown a non-Error object such as `throw "abc";`
+    /// or any other non-Error object, you can get object specific properties.
+    unsafe fn get_to_json(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+}
+
+/// This is the result for ExecuteScriptWithResult.
+#[com_interface("0CE15963-3698-4DF7-9399-71ED6CDD8C9F")]
+pub trait ICoreWebView2ExecuteScriptResult: IUnknown {
+    /// This property is true if ExecuteScriptWithResult successfully executed script with
+    /// no unhandled exceptions and the result is available in the ResultAsJson property
+    /// or via the TryGetResultAsString method.
+    /// If it is false then the script execution had an unhandled exception which you
+    /// can get via the Exception property.
+    unsafe fn get_succeeded(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
+
+    /// A function that has no explicit return value returns undefined. If the
+    /// script that was run throws an unhandled exception, then the result is
+    /// also "null". This method is applied asynchronously. If the method is
+    /// run before `ContentLoading`, the script will not be executed
+    /// and the string "null" will be returned.
+    /// The return value description is as follows
+    /// 1. S_OK: Execution succeeds.
+    /// 2. E_POINTER: When the `jsonResult` is nullptr.
+    unsafe fn get_result_as_json(&self, /* out, retval */ json_result: *mut LPWSTR) -> HRESULT;
+
+    /// If Succeeded is true and the result of script execution is a string, this method provides the value of the string result,
+    /// and we will get the `FALSE` var value when the js result is not string type.
+    /// The return value description is as follows
+    /// 1. S_OK: Execution succeeds.
+    /// 2. E_POINTER: When the `stringResult` or `value` is nullptr.
+    /// NOTE: If the `value` returns `FALSE`, the `stringResult` will be set to a empty string.
+    unsafe fn try_get_result_as_string(
+        &self,
+        /* out */ string_result: *mut LPWSTR,
+        /* out */ value: *mut BOOL,
+    ) -> HRESULT;
+
+    /// If Succeeded is false, you can use this property to get the unhandled exception thrown by script execution
+    /// Note that due to the compatibility of the WinRT/.NET interface,
+    /// S_OK will be returned even if the acquisition fails.
+    /// We can determine whether the acquisition is successful by judging whether the `exception` is nullptr.
+    unsafe fn get_exception(
+        &self,
+        /* out, retval */ exception: *mut *mut *mut ICoreWebView2ScriptExceptionVTable,
+    ) -> HRESULT;
+}
+
+/// This is the callback for ExecuteScriptWithResult
+#[com_interface("1BB5317B-8238-4C67-A7FF-BAF6558F289D")]
+pub trait ICoreWebView2ExecuteScriptWithResultCompletedHandler: IUnknown {
+    /// Provides the result of ExecuteScriptWithResult
+    unsafe fn invoke(
+        &self,
+        /* in */ error_code: HRESULT,
+        /* in */ result: *mut *mut ICoreWebView2ExecuteScriptResultVTable,
+    ) -> HRESULT;
+}
+
+/// This interface is an extension of `ICoreWebView2` that allows to
+/// set filters in order to receive WebResourceRequested events for
+/// service workers, shared workers and different origin iframes.
+#[com_interface("DB75DFC7-A857-4632-A398-6969DDE26C0A")]
+pub trait ICoreWebView2_22: ICoreWebView2_21 {
+    /// A web resource request with a resource context that matches this
+    /// filter's resource context and a URI that matches this filter's URI
+    /// wildcard string for corresponding request sources will be raised via
+    /// the `WebResourceRequested` event. To receive all raised events filters
+    /// have to be added before main page navigation.
+    ///
+    /// The `uri` parameter value is a wildcard string matched against the URI
+    /// of the web resource request. This is a glob style
+    /// wildcard string in which a `*` matches zero or more characters and a `?`
+    /// matches exactly one character.
+    /// These wildcard characters can be escaped using a backslash just before
+    /// the wildcard character in order to represent the literal `*` or `?`.
+    ///
+    /// The matching occurs over the URI as a whole string and not limiting
+    /// wildcard matches to particular parts of the URI.
+    /// The wildcard filter is compared to the URI after the URI has been
+    /// normalized, any URI fragment has been removed, and non-ASCII hostnames
+    /// have been converted to punycode.
+    ///
+    /// Specifying a `nullptr` for the uri is equivalent to an empty string which
+    /// matches no URIs.
+    ///
+    /// For more information about resource context filters, navigate to
+    /// [COREWEBVIEW2_WEB_RESOURCE_CONTEXT](/microsoft-edge/webview2/reference/win32/icorewebview2#corewebview2_web_resource_context).
+    ///
+    /// The `requestSourceKinds` is a mask of one or more
+    /// `COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS`. OR operation(s) can be
+    /// applied to multiple `COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS` to
+    /// create a mask representing those data types. API returns `E_INVALIDARG` if
+    /// `requestSourceKinds` equals to zero. For more information about request
+    /// source kinds, navigate to
+    /// [COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS](/microsoft-edge/webview2/reference/win32/icorewebview2#corewebview2_web_resource_request_source_kinds).
+    ///
+    /// Because service workers and shared workers run separately from any one
+    /// HTML document their WebResourceRequested will be raised for all
+    /// CoreWebView2s that have appropriate filters added in the corresponding
+    /// CoreWebView2Environment. You should only add a WebResourceRequested filter
+    /// for COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS_SERVICE_WORKER or
+    /// COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS_SHARED_WORKER on
+    /// one CoreWebView2 to avoid handling the same WebResourceRequested
+    /// event multiple times.
+    ///
+    /// | URI Filter String | Request URI | Match | Notes |
+    /// | ---- | ---- | ---- | ---- |
+    /// | `*` | `https://contoso.com/a/b/c` | Yes | A single * will match all URIs |
+    /// | `*://contoso.com/*` | `https://contoso.com/a/b/c` | Yes | Matches everything in contoso.com across all schemes |
+    /// | `*://contoso.com/*` | `https://example.com/?https://contoso.com/` | Yes | But also matches a URI with just the same text anywhere in the URI |
+    /// | `example` | `https://contoso.com/example` | No | The filter does not perform partial matches |
+    /// | `*example` | `https://contoso.com/example` | Yes | The filter matches across URI parts |
+    /// | `*example` | `https://contoso.com/path/?example` | Yes | The filter matches across URI parts |
+    /// | `*example` | `https://contoso.com/path/?query#example` | No | The filter is matched against the URI with no fragment |
+    /// | `*example` | `https://example` | No | The URI is normalized before filter matching so the actual URI used for comparison is `https://example/` |
+    /// | `*example/` | `https://example` | Yes | Just like above, but this time the filter ends with a / just like the normalized URI |
+    /// | `https://xn--qei.example/` | `https://&#x2764;.example/` | Yes | Non-ASCII hostnames are normalized to punycode before wildcard comparison |
+    /// | `https://&#x2764;.example/` | `https://xn--qei.example/` | No | Non-ASCII hostnames are normalized to punycode before wildcard comparison |
+    ///
+    /// \snippet ScenarioSharedWorkerWRR.cpp WebResourceRequested2
+    unsafe fn add_web_resource_requested_filter_with_request_source_kinds(
+        &self,
+        /* in */ uri: LPCWSTR,
+        /* in */ resource_context: WebResourceContext,
+        /* in */ request_source_kinds: WebResourceRequestSourceKinds,
+    ) -> HRESULT;
+
+    /// Removes a matching WebResource filter that was previously added for the
+    /// `WebResourceRequested` event.  If the same filter was added multiple
+    /// times, then it must be removed as many times as it was added for the
+    /// removal to be effective. Returns `E_INVALIDARG` for a filter that was
+    /// not added or is already removed.
+    /// If the filter was added for multiple requestSourceKinds and removed just for one of them
+    /// the filter remains for the non-removed requestSourceKinds.
+    unsafe fn remove_web_resource_requested_filter_with_request_source_kinds(
+        &self,
+        /* in */ uri: LPCWSTR,
+        /* in */ resource_context: WebResourceContext,
+        /* in */ request_source_kinds: WebResourceRequestSourceKinds,
+    ) -> HRESULT;
+}
+
+/// Event args for the `WebResourceRequested` event.
+#[com_interface("9C562C24-B219-4D7F-92F6-B187FBBADD56")]
+pub trait ICoreWebView2WebResourceRequestedEventArgs2:
+    ICoreWebView2WebResourceRequestedEventArgs
+{
+    /// The web resource requested source.
+    unsafe fn get_requested_source_kind(
+        &self,
+        /* out, retval */ requested_source_kind: *mut WebResourceRequestSourceKinds,
+    ) -> HRESULT;
+}
+
+/// Event handler for the `LaunchingExternalUriScheme` event.
+#[com_interface("74F712E0-8165-43A9-A13F-0CCE597E75DF")]
+pub trait ICoreWebView2LaunchingExternalUriSchemeEventHandler: IUnknown {
+    /// Receives the event args for the corresponding event.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2VTable,
+        /* in */ args: *mut *mut ICoreWebView2LaunchingExternalUriSchemeEventArgsVTable,
+    ) -> HRESULT;
+}
+
+/// Event args for `LaunchingExternalUriScheme` event.
+#[com_interface("07D1A6C3-7175-4BA1-9306-E593CA07E46C")]
+pub trait ICoreWebView2LaunchingExternalUriSchemeEventArgs: IUnknown {
+    /// The URI with the external URI scheme to be launched.
+    unsafe fn get_uri(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// The origin initiating the external URI scheme launch.
+    /// The origin will be an empty string if the request is initiated by calling
+    /// `CoreWebView2.Navigate` on the external URI scheme. If a script initiates
+    /// the navigation, the `InitiatingOrigin` will be the top-level document's
+    /// `Source`, for example, if `window.location` is set to `"calculator://"`, the
+    /// `InitiatingOrigin` will be set to `calculator://`. If the request is initiated
+    /// from a child frame, the `InitiatingOrigin` will be the source of that child frame.
+    /// If the `InitiatingOrigin` is
+    /// [opaque](https://html.spec.whatwg.org/multipage/origin.html#concept-origin-opaque),
+    /// the `InitiatingOrigin` reported in the event args will be its precursor origin.
+    /// The precursor origin is the origin that created the opaque origin. For example, if
+    /// a frame on example.com opens a subframe with a different opaque origin, the subframe's
+    /// precursor origin is example.com.
+    unsafe fn get_initiating_origin(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// `TRUE` when the external URI scheme request was initiated through a user gesture.
+    ///
+    /// \> [!NOTE]\n\> Being initiated through a user gesture does not mean that user intended
+    /// to access the associated resource.
+    unsafe fn get_is_user_initiated(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
+
+    /// The event handler may set this property to `TRUE` to cancel the external URI scheme
+    /// launch. If set to `TRUE`, the external URI scheme will not be launched, and the default
+    /// dialog is not displayed. This property can be used to replace the normal
+    /// handling of launching an external URI scheme.
+    /// The initial value of the `Cancel` property is `FALSE`.
+    unsafe fn get_cancel(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
+
+    /// Sets the `Cancel` property.
+    unsafe fn put_cancel(&self, /* in */ value: BOOL) -> HRESULT;
+
+    /// Returns an `ICoreWebView2Deferral` object.  Use this operation to
+    /// complete the event at a later time.
+    unsafe fn get_deferral(
+        &self,
+        /* out, retval */ value: *mut *mut *mut ICoreWebView2DeferralVTable,
+    ) -> HRESULT;
+}
+
+/// The caller implements this interface to handle the BasicAuthenticationRequested event.
+#[com_interface("58b4d6c2-18d4-497e-b39b-9a96533fa278")]
+pub trait ICoreWebView2BasicAuthenticationRequestedEventHandler: IUnknown {
+    /// Called to provide the implementer with the event args for the
+    /// corresponding event.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2VTable,
+        /* in */ args: *mut *mut ICoreWebView2BasicAuthenticationRequestedEventArgsVTable,
+    ) -> HRESULT;
+}
+
+/// Implements the interface to receive `IsDefaultDownloadDialogOpenChanged`
+/// events.
+#[com_interface("3117da26-ae13-438d-bd46-edbeb2c4ce81")]
+pub trait ICoreWebView2IsDefaultDownloadDialogOpenChangedEventHandler: IUnknown {
+    /// Provides the event args for the corresponding event. No event args exist
+    /// and the `args` parameter is set to `null`.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2VTable,
+        /* in */ args: *mut *mut IUnknownVTable,
+    ) -> HRESULT;
+}
+
+/// Receives the result of the `PrintToPdf` method. If the print to PDF
+/// operation succeeds, `isSuccessful` is true. Otherwise, if the operation
+/// failed, `isSuccessful` is set to false. An invalid path returns
+/// `E_INVALIDARG`.
+#[com_interface("ccf1ef04-fd8e-4d5f-b2de-0983e41b8c36")]
+pub trait ICoreWebView2PrintToPdfCompletedHandler: IUnknown {
+    /// Provides the result of the corresponding asynchronous method.
+    unsafe fn invoke(&self, /* in */ error_code: HRESULT, is_successful: BOOL) -> HRESULT;
+}
+
+/// Settings used by the `PrintToPdf` method.
+#[com_interface("377f3721-c74e-48ca-8db1-df68e51d60e2")]
+pub trait ICoreWebView2PrintSettings: IUnknown {
+    /// The orientation can be portrait or landscape. The default orientation is
+    /// portrait. See `COREWEBVIEW2_PRINT_ORIENTATION`.
+    unsafe fn get_orientation(
+        &self,
+        /* out, retval */ orientation: *mut PrintOrientation,
+    ) -> HRESULT;
+
+    /// Sets the `Orientation` property.
+    unsafe fn put_orientation(&self, /* in */ orientation: PrintOrientation) -> HRESULT;
+
+    /// The scale factor is a value between 0.1 and 2.0. The default is 1.0.
+    unsafe fn get_scale_factor(&self, /* out, retval */ scale_factor: *mut f64) -> HRESULT;
+
+    /// Sets the `ScaleFactor` property. Returns `E_INVALIDARG` if an invalid
+    /// value is provided, and the current value is not changed.
+    unsafe fn put_scale_factor(&self, /* in */ scale_factor: f64) -> HRESULT;
+
+    /// The page width in inches. The default width is 8.5 inches.
+    unsafe fn get_page_width(&self, /* out, retval */ page_width: *mut f64) -> HRESULT;
+
+    /// Sets the `PageWidth` property. Returns `E_INVALIDARG` if the page width is
+    /// less than or equal to zero, and the current value is not changed.
+    unsafe fn put_page_width(&self, /* in */ page_width: f64) -> HRESULT;
+
+    /// The page height in inches. The default height is 11 inches.
+    unsafe fn get_page_height(&self, /* out, retval */ page_height: *mut f64) -> HRESULT;
+
+    /// Sets the `PageHeight` property. Returns `E_INVALIDARG` if the page height
+    /// is less than or equal to zero, and the current value is not changed.
+    unsafe fn put_page_height(&self, /* in */ page_height: f64) -> HRESULT;
+
+    /// The top margin in inches. The default is 1 cm, or ~0.4 inches.
+    unsafe fn get_margin_top(&self, /* out, retval */ margin_top: *mut f64) -> HRESULT;
+
+    /// Sets the `MarginTop` property. A margin cannot be less than zero.
+    /// Returns `E_INVALIDARG` if an invalid value is provided, and the current
+    /// value is not changed.
+    unsafe fn put_margin_top(&self, /* in */ margin_top: f64) -> HRESULT;
+
+    /// The bottom margin in inches. The default is 1 cm, or ~0.4 inches.
+    unsafe fn get_margin_bottom(&self, /* out, retval */ margin_bottom: *mut f64) -> HRESULT;
+
+    /// Sets the `MarginBottom` property. A margin cannot be less than zero.
+    /// Returns `E_INVALIDARG` if an invalid value is provided, and the current
+    /// value is not changed.
+    unsafe fn put_margin_bottom(&self, /* in */ margin_bottom: f64) -> HRESULT;
+
+    /// The left margin in inches. The default is 1 cm, or ~0.4 inches.
+    unsafe fn get_margin_left(&self, /* out, retval */ margin_left: *mut f64) -> HRESULT;
+
+    /// Sets the `MarginLeft` property. A margin cannot be less than zero.
+    /// Returns `E_INVALIDARG` if an invalid value is provided, and the current
+    /// value is not changed.
+    unsafe fn put_margin_left(&self, /* in */ margin_left: f64) -> HRESULT;
+
+    /// The right margin in inches. The default is 1 cm, or ~0.4 inches.
+    unsafe fn get_margin_right(&self, /* out, retval */ margin_right: *mut f64) -> HRESULT;
+
+    /// Set the `MarginRight` property.A margin cannot be less than zero.
+    /// Returns `E_INVALIDARG` if an invalid value is provided, and the current
+    /// value is not changed.
+    unsafe fn put_margin_right(&self, /* in */ margin_right: f64) -> HRESULT;
+
+    /// `TRUE` if background colors and images should be printed. The default value
+    /// is `FALSE`.
+    unsafe fn get_should_print_backgrounds(
+        &self,
+        /* out, retval */ should_print_backgrounds: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Set the `ShouldPrintBackgrounds` property.
+    unsafe fn put_should_print_backgrounds(
+        &self,
+        /* in */ should_print_backgrounds: BOOL,
+    ) -> HRESULT;
+
+    /// `TRUE` if only the current end user's selection of HTML in the document
+    /// should be printed. The default value is `FALSE`.
+    unsafe fn get_should_print_selection_only(
+        &self,
+        /* out, retval */ should_print_selection_only: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Set the `ShouldPrintSelectionOnly` property.
+    unsafe fn put_should_print_selection_only(
+        &self,
+        /* in */ should_print_selection_only: BOOL,
+    ) -> HRESULT;
+
+    /// `TRUE` if header and footer should be printed. The default value is `FALSE`.
+    /// The header consists of the date and time of printing, and the title of the
+    /// page. The footer consists of the URI and page number. The height of the
+    /// header and footer is 0.5 cm, or ~0.2 inches.
+    unsafe fn get_should_print_header_and_footer(
+        &self,
+        /* out, retval */ should_print_header_and_footer: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Set the `ShouldPrintHeaderAndFooter` property.
+    unsafe fn put_should_print_header_and_footer(
+        &self,
+        /* in */ should_print_header_and_footer: BOOL,
+    ) -> HRESULT;
+
+    /// The title in the header if `ShouldPrintHeaderAndFooter` is `TRUE`. The
+    /// default value is the title of the current document.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_header_title(&self, /* out, retval */ header_title: *mut LPWSTR) -> HRESULT;
+
+    /// Set the `HeaderTitle` property. If an empty string or null value is
+    /// provided, no title is shown in the header.
+    unsafe fn put_header_title(&self, /* in */ header_title: LPCWSTR) -> HRESULT;
+
+    /// The URI in the footer if `ShouldPrintHeaderAndFooter` is `TRUE`. The
+    /// default value is the current URI.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_footer_uri(&self, /* out, retval */ footer_uri: *mut LPWSTR) -> HRESULT;
+
+    /// Set the `FooterUri` property. If an empty string or null value is
+    /// provided, no URI is shown in the footer.
+    unsafe fn put_footer_uri(&self, /* in */ footer_uri: LPCWSTR) -> HRESULT;
+}
+
 /// The caller implements this interface to receive the TrySuspend result.
 #[com_interface("00F206A7-9D17-4605-91F6-4E8E4DE192E3")]
 pub trait ICoreWebView2TrySuspendCompletedHandler: IUnknown {
@@ -1838,11 +3803,16 @@ pub trait ICoreWebView2Controller: IUnknown {
     /// too, run `ShowWindow` on it directly in addition to modifying the
     /// `IsVisible` property.  WebView2 as a child window does not get window
     /// messages when the top window is minimized or restored.  For performance
-    /// reason, developer should set `IsVisible` property of the WebView to
-    /// `FALSE` when the app window is minimized and back to `TRUE` when app
-    /// window is restored.  App window does this by handling
-    /// `SC_MINIMIZE and SC_RESTORE` command upon receiving `WM_SYSCOMMAND`
+    /// reasons, developers should set the `IsVisible` property of the WebView to
+    /// `FALSE` when the app window is minimized and back to `TRUE` when the app
+    /// window is restored. The app window does this by handling
+    /// `SIZE_MINIMIZED and SIZE_RESTORED` command upon receiving `WM_SIZE`
     /// message.
+    ///
+    /// There are CPU and memory benefits when the page is hidden. For instance,
+    /// Chromium has code that throttles activities on the page like animations
+    /// and some tasks are run less frequently. Similarly, WebView2 will
+    /// purge some caches to reduce memory usage.
     ///
     /// \snippet ViewComponent.cpp ToggleIsVisible
     unsafe fn get_is_visible(&self, /* out, retval */ is_visible: *mut BOOL) -> HRESULT;
@@ -2080,6 +4050,7 @@ pub trait ICoreWebView2Controller: IUnknown {
     /// cycle by releasing all event handlers.  But to avoid the situation, it is
     /// best to both explicitly run `Close` on the WebView and to not capture a
     /// reference to the WebView to ensure the WebView is cleaned up correctly.
+    /// `Close` is synchronous and won't trigger the `beforeunload` event.
     ///
     /// \snippet AppWindow.cpp Close
     unsafe fn close(&self) -> HRESULT;
@@ -2117,6 +4088,21 @@ pub trait ICoreWebView2Controller2: ICoreWebView2Controller {
     /// with E_INVALIDARG. The only supported alpha values are 0 and 255, all
     /// other values will result in E_INVALIDARG.
     /// `DefaultBackgroundColor` can only be an opaque color or transparent.
+    ///
+    /// This value may also be set by using the
+    /// `WEBVIEW2_DEFAULT_BACKGROUND_COLOR` environment variable. There is a
+    /// known issue with background color where setting the color by API can
+    /// still leave the app with a white flicker before the
+    /// `DefaultBackgroundColor` takes effect. Setting the color via environment
+    /// variable solves this issue. The value must be a hex value that can
+    /// optionally prepend a 0x. The value must account for the alpha value
+    /// which is represented by the first 2 digits. So any hex value fewer than 8
+    /// digits will assume a prepended 00 to the hex value and result in a
+    /// transparent color.
+    /// `get_DefaultBackgroundColor` will return the result of this environment
+    /// variable if used. This environment variable can only set the
+    /// `DefaultBackgroundColor` once. Subsequent updates to background color
+    /// must be done through API call.
     ///
     /// \snippet ViewComponent.cpp DefaultBackgroundColor
     unsafe fn get_default_background_color(
@@ -2161,7 +4147,10 @@ pub trait ICoreWebView2Controller3: ICoreWebView2Controller2 {
     /// and raises RasterizationScaleChanged event. When false, the WebView will
     /// not track monitor DPI scale changes, and the app must update the
     /// RasterizationScale property itself. RasterizationScaleChanged event will
-    /// never raise when ShouldDetectMonitorScaleChanges is false.
+    /// never raise when ShouldDetectMonitorScaleChanges is false. Apps that want
+    /// to set their own rasterization scale should set this property to false to
+    /// avoid the WebView2 updating the RasterizationScale property to match the
+    /// monitor DPI scale.
     unsafe fn get_should_detect_monitor_scale_changes(
         &self,
         /* out, retval */ value: *mut BOOL,
@@ -2216,6 +4205,26 @@ pub trait ICoreWebView2Controller3: ICoreWebView2Controller2 {
 
     /// Set the BoundsMode property.
     unsafe fn put_bounds_mode(&self, /* in */ bounds_mode: BoundsMode) -> HRESULT;
+}
+
+/// This is the ICoreWebView2Controller4 interface.
+/// The ICoreWebView2Controller4 provides interface to enable/disable external drop.
+#[com_interface("97d418d5-a426-4e49-a151-e1a10f327d9e")]
+pub trait ICoreWebView2Controller4: ICoreWebView2Controller3 {
+    /// Gets the `AllowExternalDrop` property which is used to configure the
+    /// capability that dragging objects from outside the bounds of webview2 and
+    /// dropping into webview2 is allowed or disallowed. The default value is
+    /// TRUE.
+    ///
+    /// \snippet SettingsComponent.cpp ToggleAllowExternalDrop
+    unsafe fn get_allow_external_drop(&self, /* out, retval  */ value: *mut BOOL) -> HRESULT;
+
+    /// Sets the `AllowExternalDrop` property which is used to configure the
+    /// capability that dragging objects from outside the bounds of webview2 and
+    /// dropping into webview2 is allowed or disallowed.
+    ///
+    /// \snippet SettingsComponent.cpp ToggleAllowExternalDrop
+    unsafe fn put_allow_external_drop(&self, /* in */ value: BOOL) -> HRESULT;
 }
 
 /// This interface is an extension of the ICoreWebView2Controller interface to
@@ -2301,12 +4310,10 @@ pub trait ICoreWebView2CompositionController: IUnknown {
     /// this will return the int value for IDC_IBEAM. The systemCursorId is only
     /// valid if the rendering engine reports a default Windows cursor resource
     /// value. Navigate to
-    /// /[LoadCursorW/]/[WindowsWin32ApiWinuserNfwinuserloadcursorw/] for more
+    /// [LoadCursorW](/windows/win32/api/winuser/nf-winuser-loadcursorw) for more
     /// details. Otherwise, if custom CSS cursors are being used, this will return
     /// 0. To actually use systemCursorId in LoadCursor or LoadImage,
     /// MAKEINTRESOURCE must be called on it first.
-    ///
-    /// [WindowsWin32ApiWinuserNfwinuserloadcursorw]: /windows/win32/api/winuser/nf-winuser-loadcursorw "LoadCursorW function (winuser.h) - Win32 apps | Microsoft Docs"
     ///
     /// \snippet ViewComponent.cpp SystemCursorId
     unsafe fn get_system_cursor_id(
@@ -2339,10 +4346,153 @@ pub trait ICoreWebView2CompositionController: IUnknown {
 /// A continuation of the ICoreWebView2CompositionController interface.
 #[com_interface("0b6a3d24-49cb-4806-ba20-b5e0734a7b26")]
 pub trait ICoreWebView2CompositionController2: ICoreWebView2CompositionController {
-    /// Returns the UI Automation Provider for the WebView.
-    unsafe fn get_uiaprovider(
+    /// Returns the Automation Provider for the WebView. This object implements
+    /// IRawElementProviderSimple.
+    unsafe fn get_automation_provider(
         &self,
         /* out, retval */ provider: *mut *mut *mut IUnknownVTable,
+    ) -> HRESULT;
+}
+
+type IDataObjectVTable = IUnknownVTable;
+
+/// This interface is the continuation of the
+/// ICoreWebView2CompositionController2 interface to manage drag and drop.
+#[com_interface("9570570e-4d76-4361-9ee1-f04d0dbdfb1e")]
+pub trait ICoreWebView2CompositionController3: ICoreWebView2CompositionController2 {
+    /// This function corresponds to [IDropTarget::DragEnter](/windows/win32/api/oleidl/nf-oleidl-idroptarget-dragenter).
+    ///
+    /// This function has a dependency on AllowExternalDrop property of
+    /// CoreWebView2Controller and return E_FAIL to callers to indicate this
+    /// operation is not allowed if AllowExternalDrop property is set to false.
+    ///
+    /// The hosting application must register as an IDropTarget and implement
+    /// and forward DragEnter calls to this function.
+    ///
+    /// point parameter must be modified to include the WebView's offset and be in
+    /// the WebView's client coordinates (Similar to how SendMouseInput works).
+    ///
+    /// \snippet DropTarget.cpp DragEnter
+    unsafe fn drag_enter(
+        &self,
+        /* in */ data_object: *mut *mut IDataObjectVTable,
+        /* in */ key_state: DWORD,
+        /* in */ point: POINT,
+        /* out, retval */ effect: *mut DWORD,
+    ) -> HRESULT;
+
+    /// This function corresponds to [IDropTarget::DragLeave](/windows/win32/api/oleidl/nf-oleidl-idroptarget-dragleave).
+    ///
+    /// This function has a dependency on AllowExternalDrop property of
+    /// CoreWebView2Controller and return E_FAIL to callers to indicate this
+    /// operation is not allowed if AllowExternalDrop property is set to false.
+    ///
+    /// The hosting application must register as an IDropTarget and implement
+    /// and forward DragLeave calls to this function.
+    ///
+    /// \snippet DropTarget.cpp DragLeave
+    unsafe fn drag_leave(&self) -> HRESULT;
+
+    /// This function corresponds to [IDropTarget::DragOver](/windows/win32/api/oleidl/nf-oleidl-idroptarget-dragover).
+    ///
+    /// This function has a dependency on AllowExternalDrop property of
+    /// CoreWebView2Controller and return E_FAIL to callers to indicate this
+    /// operation is not allowed if AllowExternalDrop property is set to false.
+    ///
+    /// The hosting application must register as an IDropTarget and implement
+    /// and forward DragOver calls to this function.
+    ///
+    /// point parameter must be modified to include the WebView's offset and be in
+    /// the WebView's client coordinates (Similar to how SendMouseInput works).
+    ///
+    /// \snippet DropTarget.cpp DragOver
+    unsafe fn drag_over(
+        &self,
+        /* in */ key_state: DWORD,
+        /* in */ point: POINT,
+        /* out, retval */ effect: *mut DWORD,
+    ) -> HRESULT;
+
+    /// This function corresponds to [IDropTarget::Drop](/windows/win32/api/oleidl/nf-oleidl-idroptarget-drop).
+    ///
+    /// This function has a dependency on AllowExternalDrop property of
+    /// CoreWebView2Controller and return E_FAIL to callers to indicate this
+    /// operation is not allowed if AllowExternalDrop property is set to false.
+    ///
+    /// The hosting application must register as an IDropTarget and implement
+    /// and forward Drop calls to this function.
+    ///
+    /// point parameter must be modified to include the WebView's offset and be in
+    /// the WebView's client coordinates (Similar to how SendMouseInput works).
+    ///
+    /// \snippet DropTarget.cpp Drop
+    unsafe fn drop(
+        &self,
+        /* in */ data_object: *mut *mut IDataObjectVTable,
+        /* in */ key_state: DWORD,
+        /* in */ point: POINT,
+        /* out, retval */ effect: *mut DWORD,
+    ) -> HRESULT;
+}
+
+/// This Interface includes an API which enables non-client hit-testing support for WebView2.
+#[com_interface("7C367B9B-3D2B-450F-9E58-D61A20F486AA")]
+pub trait ICoreWebView2CompositionController4: ICoreWebView2CompositionController3 {
+    /// If you are hosting a WebView2 using CoreWebView2CompositionController, you can call
+    /// this method in your Win32 WndProc to determine if the mouse is moving over or
+    /// clicking on WebView2 web content that should be considered part of a non-client region.
+    /// The point parameter is expected to be in the client coordinate space of WebView2.
+    /// The method sets the out parameter value as follows:
+    ///     - COREWEBVIEW2_NON_CLIENT_REGION_KIND_CAPTION when point corresponds to
+    ///         a region (HTML element) within the WebView2 with
+    ///         `-webkit-app-region: drag` CSS style set.
+    ///     - COREWEBVIEW2_NON_CLIENT_REGION_KIND_CLIENT when point corresponds to
+    ///         a region (HTML element) within the WebView2 without
+    ///         `-webkit-app-region: drag` CSS style set.
+    ///     - COREWEBVIEW2_NON_CLIENT_REGION_KIND_NOWHERE when point is not within the WebView2.
+    ///
+    /// NOTE: in order for WebView2 to properly handle the title bar system menu,
+    /// the app needs to send WM_NCRBUTTONDOWN and WM_NCRBUTTONUP to SendMouseInput.
+    /// See sample code below.
+    /// \snippet ViewComponent.cpp DraggableRegions2
+    ///
+    /// \snippet ViewComponent.cpp DraggableRegions1
+    unsafe fn get_non_client_region_at_point(
+        &self,
+        /* in */ point: POINT,
+        /* out, retval */ value: *mut NonClientRegionKind,
+    ) -> HRESULT;
+
+    /// This method is used to get the collection of rects that correspond
+    /// to a particular COREWEBVIEW2_NON_CLIENT_REGION_KIND. This is to be used in
+    /// the callback of add_NonClientRegionChanged whose event args object contains
+    /// a region property of type COREWEBVIEW2_NON_CLIENT_REGION_KIND.
+    ///
+    /// \snippet ScenarioNonClientRegionSupport.cpp AddChangeListener
+    unsafe fn query_non_client_region(
+        &self,
+        /* in */ kind: NonClientRegionKind,
+        /* out, retval */ rects: *mut *mut *mut ICoreWebView2RegionRectCollectionViewVTable,
+    ) -> HRESULT;
+
+    /// This method is used to add a listener for NonClientRegionChanged.
+    /// The event is fired when regions which are marked as non-client in the
+    /// app html have changed. So either when new regions have been marked,
+    /// or unmarked, or the region(s) have been changed to a different kind.
+    ///
+    /// \snippet ScenarioNonClientRegionSupport.cpp AddChangeListener
+    unsafe fn add_non_client_region_changed(
+        &self,
+        /* in */
+        event_handler: *mut *mut ICoreWebView2NonClientRegionChangedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// This method is used to remove an event handler previously added with
+    /// add_NonClientRegionChanged
+    unsafe fn remove_non_client_region_changed(
+        &self,
+        /* in */ token: EventRegistrationToken,
     ) -> HRESULT;
 }
 
@@ -2356,8 +4506,9 @@ pub trait ICoreWebView2Deferral: IUnknown {
 }
 
 /// Defines properties that enable, disable, or modify WebView features.
-/// Setting changes made after `NavigationStarting` event does not apply
-/// until the next top-level navigation.
+/// Changes to `IsGeneralAutofillEnabled` and `IsPasswordAutosaveEnabled`
+/// apply immediately, while other setting changes made after `NavigationStarting`
+/// event do not apply until the next top-level navigation.
 #[com_interface("e562e4f0-d7fa-43ac-8d71-c05150499f00")]
 pub trait ICoreWebView2Settings: IUnknown {
     /// Controls if running JavaScript is enabled in all future navigations in
@@ -2378,15 +4529,15 @@ pub trait ICoreWebView2Settings: IUnknown {
     /// document.  If set to `TRUE`, communication from the host to the top-level
     ///  HTML document of the WebView is allowed using `PostWebMessageAsJson`,
     /// `PostWebMessageAsString`, and message event of `window.chrome.webview`.
-    /// For more information, navigate to [PostWebMessageAsJson].  Communication
+    /// For more information, navigate to PostWebMessageAsJson.  Communication
     /// from the top-level HTML document of the WebView to the host is allowed
     /// using the postMessage function of `window.chrome.webview` and
     /// `add_WebMessageReceived` method.  For more information, navigate to
-    /// [add_WebMessageReceived].  If set to false, then communication is
-    /// disallowed.  `PostWebMessageAsJson` and `PostWebMessageAsString` fails
-    /// with `E_ACCESSDENIED` and `window.chrome.webview.postMessage` fails by
-    /// throwing an instance of an `Error` object.
-    /// The default value is `TRUE`.
+    /// [add_WebMessageReceived](/microsoft-edge/webview2/reference/win32/icorewebview2#add_webmessagereceived).
+    /// If set to false, then communication is disallowed.  `PostWebMessageAsJson`
+    /// and `PostWebMessageAsString` fails with `E_ACCESSDENIED` and
+    /// `window.chrome.webview.postMessage` fails by throwing an instance of an
+    /// `Error` object. The default value is `TRUE`.
     ///
     /// \snippet ScenarioWebMessage.cpp IsWebMessageEnabled
     unsafe fn get_is_web_message_enabled(
@@ -2511,12 +4662,24 @@ pub trait ICoreWebView2Settings2: ICoreWebView2Settings {
     /// Returns the User Agent. The default value is the default User Agent of the
     /// Microsoft Edge browser.
     ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    ///
     /// \snippet SettingsComponent.cpp UserAgent
     unsafe fn get_user_agent(&self, /* out, retval */ user_agent: *mut LPWSTR) -> HRESULT;
 
     /// Sets the `UserAgent` property. This property may be overridden if
     /// the User-Agent header is set in a request. If the parameter is empty
     /// the User Agent will not be updated and the current User Agent will remain.
+    /// Setting this property may clear User Agent Client Hints headers
+    /// Sec-CH-UA-* and script values from navigator.userAgentData. Current
+    /// implementation behavior is subject to change.
+    /// The User Agent set will also be effective on service workers
+    /// and shared workers associated with the WebView.
+    /// If there are multiple WebViews associated with the same service worker or
+    /// shared worker, the last User Agent set will be used.
+    /// Returns `HRESULT_FROM_WIN32(ERROR_INVALID_STATE)` if the owning WebView is
+    /// closed.
     unsafe fn put_user_agent(&self, /* in */ user_agent: LPCWSTR) -> HRESULT;
 }
 
@@ -2574,7 +4737,16 @@ pub trait ICoreWebView2Settings4: ICoreWebView2Settings3 {
     /// When IsPasswordAutosaveEnabled is true, password information is auto-populated,
     /// suggestions are shown and clicking on one will populate the fields, new data
     /// is saved, and a Save/Update Password prompt is displayed.
+    /// It will take effect immediately after setting.
     /// The default value is `FALSE`.
+    /// This property has the same value as
+    /// `CoreWebView2Profile.IsPasswordAutosaveEnabled`, and changing one will
+    /// change the other. All `CoreWebView2`s with the same `CoreWebView2Profile`
+    /// will share the same value for this property, so for the `CoreWebView2`s
+    /// with the same profile, their
+    /// `CoreWebView2Settings.IsPasswordAutosaveEnabled` and
+    /// `CoreWebView2Profile.IsPasswordAutosaveEnabled` will always have the same
+    /// value.
     ///
     /// \snippet SettingsComponent.cpp PasswordAutosaveEnabled
     unsafe fn get_is_password_autosave_enabled(
@@ -2591,7 +4763,16 @@ pub trait ICoreWebView2Settings4: ICoreWebView2Settings3 {
     /// IsGeneralAutofillEnabled is false, no suggestions appear, and no new information
     /// is saved. When IsGeneralAutofillEnabled is true, information is saved, suggestions
     /// appear and clicking on one will populate the form fields.
+    /// It will take effect immediately after setting.
     /// The default value is `TRUE`.
+    /// This property has the same value as
+    /// `CoreWebView2Profile.IsGeneralAutofillEnabled`, and changing one will
+    /// change the other. All `CoreWebView2`s with the same `CoreWebView2Profile`
+    /// will share the same value for this property, so for the `CoreWebView2`s
+    /// with the same profile, their
+    /// `CoreWebView2Settings.IsGeneralAutofillEnabled` and
+    /// `CoreWebView2Profile.IsGeneralAutofillEnabled` will always have the same
+    /// value.
     ///
     /// \snippet SettingsComponent.cpp GeneralAutofillEnabled
     unsafe fn get_is_general_autofill_enabled(
@@ -2632,13 +4813,139 @@ pub trait ICoreWebView2Settings5: ICoreWebView2Settings4 {
     unsafe fn put_is_pinch_zoom_enabled(&self, /* in */ enabled: BOOL) -> HRESULT;
 }
 
+/// A continuation of the ICoreWebView2Settings interface to manage swipe navigation.
+#[com_interface("11cb3acd-9bc8-43b8-83bf-f40753714f87")]
+pub trait ICoreWebView2Settings6: ICoreWebView2Settings5 {
+    /// The `IsSwipeNavigationEnabled` property enables or disables the ability of the
+    /// end user to use swiping gesture on touch input enabled devices to
+    /// navigate in WebView2. It defaults to `TRUE`.
+    ///
+    /// When this property is `TRUE`, then all configured navigation gestures are enabled:
+    /// 1. Swiping left and right to navigate forward and backward is always configured.
+    /// 2. Swiping down to refresh is off by default and not exposed via our API currently,
+    /// it requires the "--pull-to-refresh" option to be included in the additional browser
+    /// arguments to be configured. (See put_AdditionalBrowserArguments.)
+    ///
+    /// When set to `FALSE`, the end user cannot swipe to navigate or pull to refresh.
+    /// This API only affects the overscrolling navigation functionality and has no
+    /// effect on the scrolling interaction used to explore the web content shown
+    /// in WebView2.
+    ///
+    /// Disabling/Enabling IsSwipeNavigationEnabled takes effect after the
+    /// next navigation.
+    ///
+    /// \snippet SettingsComponent.cpp ToggleSwipeNavigationEnabled
+    unsafe fn get_is_swipe_navigation_enabled(
+        &self,
+        /* out, retval */ enabled: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Set the `IsSwipeNavigationEnabled` property
+    unsafe fn put_is_swipe_navigation_enabled(&self, /* in */ enabled: BOOL) -> HRESULT;
+}
+
+/// A continuation of the ICoreWebView2Settings interface to hide Pdf toolbar items.
+#[com_interface("488dc902-35ef-42d2-bc7d-94b65c4bc49c")]
+pub trait ICoreWebView2Settings7: ICoreWebView2Settings6 {
+    /// `HiddenPdfToolbarItems` is used to customize the PDF toolbar items. By default, it is COREWEBVIEW2_PDF_TOOLBAR_ITEMS_NONE and so it displays all of the items.
+    /// Changes to this property apply to all CoreWebView2s in the same environment and using the same profile.
+    /// Changes to this setting apply only after the next navigation.
+    /// \snippet SettingsComponent.cpp ToggleHidePdfToolbarItems
+    unsafe fn get_hidden_pdf_toolbar_items(
+        &self,
+        /* out, retval */ hidden_pdf_toolbar_items: *mut PdfToolbarItems,
+    ) -> HRESULT;
+
+    /// Set the `HiddenPdfToolbarItems` property.
+    unsafe fn put_hidden_pdf_toolbar_items(
+        &self,
+        /* in */ hidden_pdf_toolbar_items: PdfToolbarItems,
+    ) -> HRESULT;
+}
+
+/// A continuation of the ICoreWebView2Settings interface to manage smartscreen.
+#[com_interface("9e6b0e8f-86ad-4e81-8147-a9b5edb68650")]
+pub trait ICoreWebView2Settings8: ICoreWebView2Settings7 {
+    /// SmartScreen helps webviews identify reported phishing and malware websites
+    /// and also helps users make informed decisions about downloads.
+    /// `IsReputationCheckingRequired` is used to control whether SmartScreen
+    /// enabled or not. SmartScreen is enabled or disabled for all CoreWebView2s
+    /// using the same user data folder. If
+    /// CoreWebView2Setting.IsReputationCheckingRequired is true for any
+    /// CoreWebView2 using the same user data folder, then SmartScreen is enabled.
+    /// If CoreWebView2Setting.IsReputationCheckingRequired is false for all
+    /// CoreWebView2 using the same user data folder, then SmartScreen is
+    /// disabled. When it is changed, the change will be applied to all WebViews
+    /// using the same user data folder on the next navigation or download. The
+    /// default value for `IsReputationCheckingRequired` is true. If the newly
+    /// created CoreWebview2 does not set SmartScreen to false, when
+    /// navigating(Such as Navigate(), LoadDataUrl(), ExecuteScript(), etc.), the
+    /// default value will be applied to all CoreWebview2 using the same user data
+    /// folder.
+    /// SmartScreen of WebView2 apps can be controlled by Windows system setting
+    /// "SmartScreen for Microsoft Edge", specially, for WebView2 in Windows
+    /// Store apps, SmartScreen is controlled by another Windows system setting
+    /// "SmartScreen for Microsoft Store apps". When the Windows setting is enabled, the
+    /// SmartScreen operates under the control of the `IsReputationCheckingRequired`.
+    /// When the Windows setting is disabled, the SmartScreen will be disabled
+    /// regardless of the `IsReputationCheckingRequired` value set in WebView2 apps.
+    /// In other words, under this circumstance the value of
+    /// `IsReputationCheckingRequired` will be saved but overridden by system setting.
+    /// Upon re-enabling the Windows setting, the CoreWebview2 will reference the
+    /// `IsReputationCheckingRequired` to determine the SmartScreen status.
+    /// \snippet SettingsComponent.cpp ToggleSmartScreen
+    unsafe fn get_is_reputation_checking_required(
+        &self,
+        /* out, retval */ value: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Sets whether this webview2 instance needs SmartScreen protection for its content.
+    /// Set the `IsReputationCheckingRequired` property.
+    unsafe fn put_is_reputation_checking_required(&self, /* in */ value: BOOL) -> HRESULT;
+}
+
+/// A continuation of the ICoreWebView2Settings interface to manage non-client
+/// regions.
+#[com_interface("0528A73B-E92D-49F4-927A-E547DDDAA37D")]
+pub trait ICoreWebView2Settings9: ICoreWebView2Settings8 {
+    /// The `IsNonClientRegionSupportEnabled` property enables web pages to use the
+    /// `app-region` CSS style. Disabling/Enabling the `IsNonClientRegionSupportEnabled`
+    /// takes effect after the next navigation. Defaults to `FALSE`.
+    ///
+    /// When this property is `TRUE`, then all the non-client region features
+    /// will be enabled:
+    /// Draggable Regions will be enabled, they are regions on a webpage that
+    /// are marked with the CSS attribute `app-region: drag/no-drag`. When set to
+    /// `drag`, these regions will be treated like the window's title bar, supporting
+    /// dragging of the entire WebView and its host app window; the system menu shows
+    /// upon right click, and a double click will trigger maximizing/restoration of the
+    /// window size.
+    ///
+    /// When set to `FALSE`, all non-client region support will be disabled.
+    /// The `app-region` CSS style will be ignored on web pages.
+    /// \snippet SettingsComponent.cpp ToggleNonClientRegionSupportEnabled
+    unsafe fn get_is_non_client_region_support_enabled(
+        &self,
+        /* out, retval */ enabled: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Set the IsNonClientRegionSupportEnabled property
+    unsafe fn put_is_non_client_region_support_enabled(
+        &self,
+        /* in */ enabled: BOOL,
+    ) -> HRESULT;
+}
+
 /// Event args for the `ProcessFailed` event.
 #[com_interface("8155a9a4-1474-4a86-8cae-151b0fa6b8ca")]
 pub trait ICoreWebView2ProcessFailedEventArgs: IUnknown {
-    /// The kind of process failure that has occurred. `processFailedKind` is
-    /// `COREWEBVIEW2_PROCESS_FAILED_KIND_RENDER_PROCESS_EXITED` if the
-    /// failed process is the main frame's renderer, even if there were subframes
-    /// rendered by such process; all frames are gone when this happens.
+    /// The kind of process failure that has occurred. This is a combination of
+    /// process kind (for example, browser, renderer, gpu) and failure (exit,
+    /// unresponsiveness). Renderer processes are further divided in _main frame_
+    /// renderer (`RenderProcessExited`, `RenderProcessUnresponsive`) and
+    /// _subframe_ renderer (`FrameRenderProcessExited`). To learn about the
+    /// conditions under which each failure kind occurs, see
+    /// `COREWEBVIEW2_PROCESS_FAILED_KIND`.
     unsafe fn get_process_failed_kind(
         &self,
         /* out, retval */ process_failed_kind: *mut ProcessFailedKind,
@@ -2679,6 +4986,9 @@ pub trait ICoreWebView2HttpHeadersCollectionIterator: IUnknown {
     /// Get the name and value of the current HTTP header of the iterator.  If
     /// the previous `MoveNext` operation set the `hasNext` parameter to `FALSE`,
     /// this method fails.
+    ///
+    /// The caller must free the returned strings with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_current_header(
         &self,
         /* out */ name: *mut LPWSTR,
@@ -2708,6 +5018,9 @@ pub trait ICoreWebView2HttpHeadersCollectionIterator: IUnknown {
 #[com_interface("e86cac0e-5523-465c-b536-8fb9fc8c8c60")]
 pub trait ICoreWebView2HttpRequestHeaders: IUnknown {
     /// Gets the header value matching the name.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_header(
         &self,
         /* in */ name: LPCWSTR,
@@ -2766,6 +5079,9 @@ pub trait ICoreWebView2HttpResponseHeaders: IUnknown {
     ) -> HRESULT;
 
     /// Gets the first header value in the collection matching the name.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_header(
         &self,
         /* in */ name: LPCWSTR,
@@ -2792,12 +5108,18 @@ pub trait ICoreWebView2HttpResponseHeaders: IUnknown {
 #[com_interface("97055cd4-512c-4264-8b5f-e3f446cea6a5")]
 pub trait ICoreWebView2WebResourceRequest: IUnknown {
     /// The request URI.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_uri(&self, /* out, retval */ uri: *mut LPWSTR) -> HRESULT;
 
     /// Sets the `Uri` property.
     unsafe fn put_uri(&self, /* in */ uri: LPCWSTR) -> HRESULT;
 
     /// The HTTP request method.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_method(&self, /* out, retval */ method: *mut LPWSTR) -> HRESULT;
 
     /// Sets the `Method` property.
@@ -2834,6 +5156,16 @@ pub trait ICoreWebView2WebResourceResponse: IUnknown {
     /// background thread to prevent performance impact to the UI thread.  `Null`
     ///  means no content data.  `IStream` semantics apply (return `S_OK` to
     /// `Read` runs until all data is exhausted).
+    /// When providing the response data, you should consider relevant HTTP
+    /// request headers just like an HTTP server would do. For example, if the
+    /// request was for a video resource in a HTML video element, the request may
+    /// contain the [Range](https://developer.mozilla.org/docs/Web/HTTP/Headers/Range)
+    /// header to request only a part of the video that is streaming. In this
+    /// case, your response stream should be only the portion of the video
+    /// specified by the range HTTP request headers and you should set the
+    /// appropriate
+    /// [Content-Range](https://developer.mozilla.org/docs/Web/HTTP/Headers/Content-Range)
+    /// header in the response.
     unsafe fn get_content(
         &self,
         /* out, retval */ content: *mut *mut *mut IStreamVTable,
@@ -2855,6 +5187,9 @@ pub trait ICoreWebView2WebResourceResponse: IUnknown {
     unsafe fn put_status_code(&self, /* in */ status_code: i32) -> HRESULT;
 
     /// The HTTP response reason phrase.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_reason_phrase(
         &self,
         /* out, retval */ reason_phrase: *mut LPWSTR,
@@ -2868,6 +5203,9 @@ pub trait ICoreWebView2WebResourceResponse: IUnknown {
 #[com_interface("5b495469-e119-438a-9b18-7604f25f2e49")]
 pub trait ICoreWebView2NavigationStartingEventArgs: IUnknown {
     /// The uri of the requested navigation.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_uri(&self, /* out, retval */ uri: *mut LPWSTR) -> HRESULT;
 
     /// `TRUE` when the navigation was initiated through a user gesture as
@@ -2895,9 +5233,12 @@ pub trait ICoreWebView2NavigationStartingEventArgs: IUnknown {
     /// navigation is not longer present and the content of the current page is
     /// intact.  For performance reasons, `GET` HTTP requests may happen, while
     /// the host is responding.  You may set cookies and use part of a request
-    /// for the navigation.  Cancellation for navigation to `about:blank` or
-    /// frame navigation to `srcdoc` is not supported.  Such attempts are
-    /// ignored.
+    /// for the navigation.  Navigations to about schemes are cancellable, unless
+    /// `msWebView2CancellableAboutNavigations` feature flag is disabled.
+    /// Cancellation of frame navigation to `srcdoc` is not supported and
+    /// wil be ignored.  A cancelled navigation will fire a `NavigationCompleted`
+    /// event with a `WebErrorStatus` of
+    /// `COREWEBVIEW2_WEB_ERROR_STATUS_OPERATION_CANCELED`.
     unsafe fn get_cancel(&self, /* out, retval */ cancel: *mut BOOL) -> HRESULT;
 
     /// Sets the `Cancel` property.
@@ -2905,6 +5246,67 @@ pub trait ICoreWebView2NavigationStartingEventArgs: IUnknown {
 
     /// The ID of the navigation.
     unsafe fn get_navigation_id(&self, /* out, retval */ navigation_id: *mut u64) -> HRESULT;
+}
+
+/// The AdditionalAllowedFrameAncestors API that enable developers to provide additional allowed frame ancestors.
+#[com_interface("9086BE93-91AA-472D-A7E0-579F2BA006AD")]
+pub trait ICoreWebView2NavigationStartingEventArgs2:
+    ICoreWebView2NavigationStartingEventArgs
+{
+    /// Get additional allowed frame ancestors set by the host app.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_additional_allowed_frame_ancestors(
+        &self,
+        /* out, retval */ value: *mut LPWSTR,
+    ) -> HRESULT;
+
+    /// The app may set this property to allow a frame to be embedded by additional ancestors besides what is allowed by
+    /// http header [X-Frame-Options](https://developer.mozilla.org/docs/Web/HTTP/Headers/X-Frame-Options)
+    /// and [Content-Security-Policy frame-ancestors directive](https://developer.mozilla.org/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors).
+    /// If set, a frame ancestor is allowed if it is allowed by the additional allowed frame
+    /// ancestors or original http header from the site.
+    /// Whether an ancestor is allowed by the additional allowed frame ancestors is done the same way as if the site provided
+    /// it as the source list of the Content-Security-Policy frame-ancestors directive.
+    /// For example, if `https://example.com` and `https://www.example.com` are the origins of the top
+    /// page and intermediate iframes that embed a nested site-embedding iframe, and you fully trust
+    /// those origins, you should set this property to `https://example.com https://www.example.com`.
+    /// This property gives the app the ability to use iframe to embed sites that otherwise
+    /// could not be embedded in an iframe in trusted app pages.
+    /// This could potentially subject the embedded sites to [Clickjacking](https://en.wikipedia.org/wiki/Clickjacking)
+    /// attack from the code running in the embedding web page. Therefore, you should only
+    /// set this property with origins of fully trusted embedding page and any intermediate iframes.
+    /// Whenever possible, you should use the list of specific origins of the top and intermediate
+    /// frames instead of wildcard characters for this property.
+    /// This API is to provide limited support for app scenarios that used to be supported by
+    /// `<webview>` element in other solutions like JavaScript UWP apps and Electron.
+    /// You should limit the usage of this property to trusted pages, and specific navigation
+    /// target url, by checking the `Source` of the WebView2, and `Uri` of the event args.
+    ///
+    /// This property is ignored for top level document navigation.
+    ///
+    /// \snippet ScriptComponent.cpp AdditionalAllowedFrameAncestors_1
+    ///
+    /// \snippet ScriptComponent.cpp AdditionalAllowedFrameAncestors_2
+    unsafe fn put_additional_allowed_frame_ancestors(
+        &self,
+        /* in */ value: LPCWSTR,
+    ) -> HRESULT;
+}
+
+/// The NavigationKind API that enables developers to get more information about
+/// navigation type.
+#[com_interface("DDFFE494-4942-4BD2-AB73-35B8FF40E19F")]
+pub trait ICoreWebView2NavigationStartingEventArgs3:
+    ICoreWebView2NavigationStartingEventArgs2
+{
+    /// Get the navigation kind of this navigation.
+    ///
+    unsafe fn get_navigation_kind(
+        &self,
+        /* out, retval */ navigation_kind: *mut NavigationKind,
+    ) -> HRESULT;
 }
 
 /// Receives `NavigationStarting` events.
@@ -2976,6 +5378,9 @@ pub trait ICoreWebView2HistoryChangedEventHandler: IUnknown {
 #[com_interface("7390bb70-abe0-4843-9529-f143b31b03d6")]
 pub trait ICoreWebView2ScriptDialogOpeningEventArgs: IUnknown {
     /// The URI of the page that requested the dialog box.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_uri(&self, /* out, retval */ uri: *mut LPWSTR) -> HRESULT;
 
     /// The kind of JavaScript dialog box.  `alert`, `confirm`, `prompt`, or
@@ -2985,6 +5390,9 @@ pub trait ICoreWebView2ScriptDialogOpeningEventArgs: IUnknown {
     /// The message of the dialog box.  From JavaScript this is the first
     /// parameter passed to `alert`, `confirm`, and `prompt` and is empty for
     /// `beforeunload`.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_message(&self, /* out, retval */ message: *mut LPWSTR) -> HRESULT;
 
     /// The host may run this to respond with **OK** to `confirm`, `prompt`, and
@@ -2998,11 +5406,17 @@ pub trait ICoreWebView2ScriptDialogOpeningEventArgs: IUnknown {
     /// The second parameter passed to the JavaScript prompt dialog.
     /// The result of the prompt JavaScript function uses this value as the
     /// default value.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_default_text(&self, /* out, retval */ default_text: *mut LPWSTR) -> HRESULT;
 
     /// The return value from the JavaScript prompt function if `Accept` is run.
     ///  This value is ignored for dialog kinds other than prompt.  If `Accept`
     /// is not run, this value is ignored and `FALSE` is returned from prompt.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_result_text(&self, /* out, retval */ result_text: *mut LPWSTR) -> HRESULT;
 
     /// Sets the `ResultText` property.
@@ -3034,6 +5448,17 @@ pub trait ICoreWebView2NavigationCompletedEventArgs: IUnknown {
     /// ended up in an error page (failures due to no network, DNS lookup
     /// failure, HTTP server responds with 4xx), but may also be `FALSE` for
     /// additional scenarios such as `window.stop()` run on navigated page.
+    /// Note that WebView2 will report the navigation as 'unsuccessful' if the load
+    /// for the navigation did not reach the expected completion for any reason. Such
+    /// reasons include potentially catastrophic issues such network and certificate
+    /// issues, but can also be the result of intended actions such as the app canceling a navigation or
+    /// navigating away before the original navigation completed. Applications should not
+    /// just rely on this flag, but also consider the reported WebErrorStatus to
+    /// determine whether the failure is indeed catastrophic in their context.
+    /// WebErrorStatuses that may indicate a non-catastrophic failure include:
+    /// - COREWEBVIEW2_WEB_ERROR_STATUS_OPERATION_CANCELED
+    /// - COREWEBVIEW2_WEB_ERROR_STATUS_VALID_AUTHENTICATION_CREDENTIALS_REQUIRED
+    /// - COREWEBVIEW2_WEB_ERROR_STATUS_VALID_PROXY_AUTHENTICATION_REQUIRED
     unsafe fn get_is_success(&self, /* out, retval */ is_success: *mut BOOL) -> HRESULT;
 
     /// The error code if the navigation failed.
@@ -3044,6 +5469,41 @@ pub trait ICoreWebView2NavigationCompletedEventArgs: IUnknown {
 
     /// The ID of the navigation.
     unsafe fn get_navigation_id(&self, /* out, retval */ navigation_id: *mut u64) -> HRESULT;
+}
+
+/// This is an interface for the StatusCode property of
+/// ICoreWebView2NavigationCompletedEventArgs
+#[com_interface("FDF8B738-EE1E-4DB2-A329-8D7D7B74D792")]
+pub trait ICoreWebView2NavigationCompletedEventArgs2:
+    ICoreWebView2NavigationCompletedEventArgs
+{
+    /// The HTTP status code of the navigation if it involved an HTTP request.
+    /// For instance, this will usually be 200 if the request was successful, 404
+    /// if a page was not found, etc.  See
+    /// https://developer.mozilla.org/docs/Web/HTTP/Status for a list of
+    /// common status codes.
+    ///
+    /// The `HttpStatusCode` property will be 0 in the following cases:
+    /// * The navigation did not involve an HTTP request.  For instance, if it was
+    ///   a navigation to a file:// URL, or if it was a same-document navigation.
+    /// * The navigation failed before a response was received.  For instance, if
+    ///   the hostname was not found, or if there was a network error.
+    ///
+    /// In those cases, you can get more information from the `IsSuccess` and
+    /// `WebErrorStatus` properties.
+    ///
+    /// If the navigation receives a successful HTTP response, but the navigated
+    /// page calls `window.stop()` before it finishes loading, then
+    /// `HttpStatusCode` may contain a success code like 200, but `IsSuccess` will
+    /// be FALSE and `WebErrorStatus` will be
+    /// `COREWEBVIEW2_WEB_ERROR_STATUS_CONNECTION_ABORTED`.
+    ///
+    /// Since WebView2 handles HTTP continuations and redirects automatically, it
+    /// is unlikely for `HttpStatusCode` to ever be in the 1xx or 3xx ranges.
+    unsafe fn get_http_status_code(
+        &self,
+        /* out, retval */ http_status_code: *mut i32,
+    ) -> HRESULT;
 }
 
 /// Receives `NavigationCompleted` events.
@@ -3061,6 +5521,9 @@ pub trait ICoreWebView2NavigationCompletedEventHandler: IUnknown {
 #[com_interface("973ae2ef-ff18-4894-8fb2-3c758f046810")]
 pub trait ICoreWebView2PermissionRequestedEventArgs: IUnknown {
     /// The origin of the web content that requests the permission.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_uri(&self, /* out, retval */ uri: *mut LPWSTR) -> HRESULT;
 
     /// The type of the permission that is requested.
@@ -3086,7 +5549,11 @@ pub trait ICoreWebView2PermissionRequestedEventArgs: IUnknown {
     unsafe fn put_state(&self, /* in */ state: PermissionState) -> HRESULT;
 
     /// Gets an `ICoreWebView2Deferral` object.  Use the deferral object to make
-    /// the permission decision at a later time.
+    /// the permission decision at a later time. The deferral only applies to the
+    /// current request, and does not prevent the `PermissionRequested` event from
+    /// getting raised for new requests. However, for some permission kinds the
+    /// WebView will avoid creating a new request if there is a pending request of
+    /// the same kind.
     unsafe fn get_deferral(
         &self,
         /* out, retval */ deferral: *mut *mut *mut ICoreWebView2DeferralVTable,
@@ -3239,6 +5706,9 @@ pub trait ICoreWebView2MoveFocusRequestedEventHandler: IUnknown {
 #[com_interface("0f99a40c-e962-4207-9e92-e3d542eff849")]
 pub trait ICoreWebView2WebMessageReceivedEventArgs: IUnknown {
     /// The URI of the document that sent this web message.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_source(&self, /* out, retval */ source: *mut LPWSTR) -> HRESULT;
 
     /// The message posted from the WebView content to the host converted to a
@@ -3252,6 +5722,9 @@ pub trait ICoreWebView2WebMessageReceivedEventArgs: IUnknown {
     /// postMessage(1.2)             L"1.2"
     /// postMessage('example')       L"\"example\""
     /// ```
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_web_message_as_json(
         &self,
         /* out, retval */ web_message_as_json: *mut LPWSTR,
@@ -3276,6 +5749,9 @@ pub trait ICoreWebView2WebMessageReceivedEventArgs: IUnknown {
     /// postMessage(1.2)             E_INVALIDARG
     /// postMessage('example')       L"example"
     /// ```
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn try_get_web_message_as_string(
         &self,
         /* out, retval */ web_message_as_string: *mut LPWSTR,
@@ -3298,10 +5774,30 @@ pub trait ICoreWebView2WebMessageReceivedEventHandler: IUnknown {
 pub trait ICoreWebView2DevToolsProtocolEventReceivedEventArgs: IUnknown {
     /// The parameter object of the corresponding `DevToolsProtocol` event
     /// represented as a JSON string.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_parameter_object_as_json(
         &self,
         /* out, retval */ parameter_object_as_json: *mut LPWSTR,
     ) -> HRESULT;
+}
+
+/// This is a continuation of the `ICoreWebView2DevToolsProtocolEventReceivedEventArgs`
+/// interface that provides the session ID of the target where the event originates from.
+#[com_interface("2DC4959D-1494-4393-95BA-BEA4CB9EBD1B")]
+pub trait ICoreWebView2DevToolsProtocolEventReceivedEventArgs2:
+    ICoreWebView2DevToolsProtocolEventReceivedEventArgs
+{
+    /// The sessionId of the target where the event originates from.
+    /// Empty string is returned as sessionId if the event comes from the default
+    /// session for the top page.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    ///
+    /// \snippet ScriptComponent.cpp DevToolsProtocolEventReceivedSessionId
+    unsafe fn get_session_id(&self, /* out, retval */ session_id: *mut LPWSTR) -> HRESULT;
 }
 
 /// Receives `DevToolsProtocolEventReceived` events from the WebView.
@@ -3358,21 +5854,35 @@ pub trait ICoreWebView2CreateCoreWebView2CompositionControllerCompletedHandler: 
 #[com_interface("34acb11c-fc37-4418-9132-f9c21d1eafb9")]
 pub trait ICoreWebView2NewWindowRequestedEventArgs: IUnknown {
     /// The target uri of the new window requested.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_uri(&self, /* out, retval */ uri: *mut LPWSTR) -> HRESULT;
 
-    /// Sets a CoreWebView2 as a result of the NewWindowRequested event. If the
-    /// `NewWindow` is set, the top-level window returns as the opened `WindowProxy`.
-    /// The NewWindow property should be set to a CoreWebView2 that has not been
-    /// navigated previously. Don't use methods that cause navigation or interact
-    /// with the DOM on this CoreWebView2. Setting event handlers, changing
-    /// Settings properties, or other methods are fine to call. Once the
+    /// Sets a CoreWebView2 as a result of the NewWindowRequested event. Provides
+    /// a WebView as the target for a `window.open()` from inside the
+    /// requesting WebView. If this is set, the top-level window of this WebView
+    /// is returned as the opened
+    /// [WindowProxy](https://developer.mozilla.org/docs/glossary/windowproxy)
+    /// to the opener script. If this is not set, then `Handled` is checked to
+    /// determine behavior for NewWindowRequested event.
+    /// CoreWebView2 provided in the `NewWindow` property must be on the same
+    /// Environment as the opener WebView and should not have been navigated
+    /// previously. Don't use methods that cause navigation or interact with the
+    /// DOM on this CoreWebView2 until the target content has loaded. Setting event
+    /// handlers, changing Settings properties, or other methods are fine to call.
+    /// Changes to settings should be made before `put_NewWindow` is called to
+    /// ensure that those settings take effect for the newly setup WebView. Once the
     /// NewWindow is set the underlying web contents of this CoreWebView2 will be
-    /// replaced and navigated as appropriate for the new window.
-    /// After setting new window it cannot be changed and error will be return otherwise.
+    /// replaced and navigated as appropriate for the new window. After setting
+    /// new window it cannot be changed and error will be return otherwise.
     ///
     /// The methods which should affect the new web contents like
-    /// AddScriptToExecuteOnDocumentCreated and add_WebResourceRequested
-    /// have to be called after setting NewWindow.
+    /// AddScriptToExecuteOnDocumentCreated has to be called and completed before setting NewWindow.
+    /// Other methods which should affect the new web contents like add_WebResourceRequested have to be called after setting NewWindow.
+    /// It is best not to use RemoveScriptToExecuteOnDocumentCreated before setting NewWindow, otherwise it may not work for later added scripts.
+    ///
+    /// The new WebView must have the same profile as the opener WebView.
     unsafe fn put_new_window(
         &self,
         /* in */ new_window: *mut *mut ICoreWebView2VTable,
@@ -3395,10 +5905,18 @@ pub trait ICoreWebView2NewWindowRequestedEventArgs: IUnknown {
     /// Gets whether the `NewWindowRequested` event is handled by host.
     unsafe fn get_handled(&self, /* out, retval */ handled: *mut BOOL) -> HRESULT;
 
-    /// `TRUE` when the new window request was initiated through a user gesture
-    /// such as selecting an anchor tag with target.  The Microsoft Edge popup
-    /// blocker is disabled for WebView so the app is able to use this flag to
-    /// block non-user initiated popups.
+    /// `TRUE` when the new window request was initiated through a user gesture.
+    /// Examples of user initiated requests are:
+    ///
+    /// - Selecting an anchor tag with target
+    /// - Programmatic window open from a script that directly run as a result of
+    /// user interaction such as via onclick handlers.
+    ///
+    /// Non-user initiated requests are programmatic window opens from a script
+    /// that are not directly triggered by user interaction, such as those that
+    /// run while loading a new page or via timers.
+    /// The Microsoft Edge popup blocker is disabled for WebView so the app is
+    /// able to use this flag to block non-user initiated popups.
     unsafe fn get_is_user_initiated(
         &self,
         /* out, retval */ is_user_initiated: *mut BOOL,
@@ -3422,10 +5940,31 @@ pub trait ICoreWebView2NewWindowRequestedEventArgs: IUnknown {
     ) -> HRESULT;
 }
 
+/// This is a continuation of the `ICoreWebView2NewWindowRequestedEventArgs` interface.
+#[com_interface("bbc7baed-74c6-4c92-b63a-7f5aeae03de3")]
+pub trait ICoreWebView2NewWindowRequestedEventArgs2:
+    ICoreWebView2NewWindowRequestedEventArgs
+{
+    /// Gets the name of the new window. This window can be created via `window.open(url, windowName)`,
+    /// where the windowName parameter corresponds to `Name` property.
+    /// If no windowName is passed to `window.open`, then the `Name` property
+    /// will be set to an empty string. Additionally, if window is opened through other means,
+    /// such as `<a target="windowName">...</a>` or `<iframe name="windowName">...</iframe>`,
+    /// then the `Name` property will be set accordingly. In the case of target=_blank,
+    /// the `Name` property will be an empty string.
+    /// Opening a window via ctrl+clicking a link would result in the `Name` property
+    /// being set to an empty string.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_name(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+}
+
 /// The window features for a WebView popup window.  The fields match the
 /// `windowFeatures` passed to `window.open` as specified in
-/// \[Window features\]\[MdnDocsWebApiWindowOpenWindowFeatures\]
+/// [Window features](https://developer.mozilla.org/docs/Web/API/Window/open#Window_features)
 /// on MDN.
+///
 /// There is no requirement for you to respect the values.  If your app does
 /// not have corresponding UI features (for example, no toolbar) or if all
 /// instance of WebView are opened in tabs and do not have distinct size or
@@ -3439,13 +5978,17 @@ pub trait ICoreWebView2NewWindowRequestedEventArgs: IUnknown {
 /// considered `0`.  If the value is a floating point value, it is rounded down
 /// to an integer.
 ///
-/// \[MdnDocsWebApiWindowOpenWindowFeatures\]: https://developer.mozilla.org/docs/Web/API/Window/open#Window_features "Window features - Window.open() | MDN"
+/// In runtime versions 98 or later, the values of `ShouldDisplayMenuBar`,
+/// `ShouldDisplayStatus`, `ShouldDisplayToolbar`, and `ShouldDisplayScrollBars`
+/// will not directly depend on the equivalent fields in the `windowFeatures`
+/// string.  Instead, they will all be false if the window is expected to be a
+/// popup, and true if it is not.
 #[com_interface("5eaf559f-b46e-4397-8860-e422f287ff1e")]
 pub trait ICoreWebView2WindowFeatures: IUnknown {
     /// Specifies left and top values.
     unsafe fn get_has_position(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
 
-    /// Specifiesheight and width values.
+    /// Specifies height and width values.
     unsafe fn get_has_size(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
 
     /// Specifies the left position of the window.   If `HasPosition` is set to
@@ -3524,14 +6067,8 @@ pub trait ICoreWebView2AcceleratorKeyPressedEventArgs: IUnknown {
     unsafe fn get_virtual_key(&self, /* out, retval */ virtual_key: *mut u32) -> HRESULT;
 
     /// The `LPARAM` value that accompanied the window message.  For more
-    /// information, navigate to
-    /// \[WM_KEYDOWN\]\[WindowsWin32InputdevWmKeydown\]
-    /// and
-    /// \[WM_KEYUP\]\[WindowsWin32InputdevWmKeyup\].
-    ///
-    /// \[WindowsWin32InputdevWmKeydown\]: /windows/win32/inputdev/wm-keydown "WM_KEYDOWN message | Microsoft Docs"
-    ///
-    /// \[WindowsWin32InputdevWmKeyup\]: /windows/win32/inputdev/wm-keyup "WM_KEYUP message | Microsoft Docs"
+    /// information, navigate to [WM_KEYDOWN](/windows/win32/inputdev/wm-keydown)
+    /// and [WM_KEYUP](/windows/win32/inputdev/wm-keyup).
     unsafe fn get_key_event_lparam(&self, /* out, retval */ l_param: *mut i32) -> HRESULT;
 
     /// A structure representing the information passed in the `LPARAM` of the
@@ -3553,6 +6090,70 @@ pub trait ICoreWebView2AcceleratorKeyPressedEventArgs: IUnknown {
     unsafe fn put_handled(&self, /* in */ handled: BOOL) -> HRESULT;
 }
 
+/// This is This is a continuation of the ICoreWebView2AcceleratorKeyPressedEventArgs interface.
+#[com_interface("03b2c8c8-7799-4e34-bd66-ed26aa85f2bf")]
+pub trait ICoreWebView2AcceleratorKeyPressedEventArgs2:
+    ICoreWebView2AcceleratorKeyPressedEventArgs
+{
+    /// This property allows developers to enable or disable the browser from handling a specific
+    /// browser accelerator key such as Ctrl+P or F3, etc.
+    ///
+    /// Browser accelerator keys are the keys/key combinations that access features specific to
+    /// a web browser, including but not limited to:
+    ///  - Ctrl-F and F3 for Find on Page
+    ///  - Ctrl-P for Print
+    ///  - Ctrl-R and F5 for Reload
+    ///  - Ctrl-Plus and Ctrl-Minus for zooming
+    ///  - Ctrl-Shift-C and F12 for DevTools
+    ///  - Special keys for browser functions, such as Back, Forward, and Search
+    ///
+    /// This property does not disable accelerator keys related to movement and text editing,
+    /// such as:
+    ///  - Home, End, Page Up, and Page Down
+    ///  - Ctrl-X, Ctrl-C, Ctrl-V
+    ///  - Ctrl-A for Select All
+    ///  - Ctrl-Z for Undo
+    ///
+    /// The `CoreWebView2Settings.AreBrowserAcceleratorKeysEnabled` API is a convenient setting
+    /// for developers to disable all the browser accelerator keys together, and sets the default
+    /// value for the `IsBrowserAcceleratorKeyEnabled` property.
+    /// By default, `CoreWebView2Settings.AreBrowserAcceleratorKeysEnabled` is `TRUE` and
+    /// `IsBrowserAcceleratorKeyEnabled` is `TRUE`.
+    /// When developers change `CoreWebView2Settings.AreBrowserAcceleratorKeysEnabled` setting to `FALSE`,
+    /// this will change default value for `IsBrowserAcceleratorKeyEnabled` to `FALSE`.
+    /// If developers want specific keys to be handled by the browser after changing the
+    /// `CoreWebView2Settings.AreBrowserAcceleratorKeysEnabled` setting to `FALSE`, they need to enable
+    /// these keys by setting `IsBrowserAcceleratorKeyEnabled` to `TRUE`.
+    /// This API will give the event arg higher priority over the
+    /// `CoreWebView2Settings.AreBrowserAcceleratorKeysEnabled` setting when we handle the keys.
+    ///
+    /// For browser accelerator keys, when an accelerator key is pressed, the propagation and
+    /// processing order is:
+    /// 1. A CoreWebView2Controller.AcceleratorKeyPressed event is raised
+    /// 2. WebView2 browser feature accelerator key handling
+    /// 3. Web Content Handling: If the key combination isn't reserved for browser actions,
+    /// the key event propagates to the web content, where JavaScript event listeners can
+    /// capture and respond to it.
+    ///
+    /// `ICoreWebView2AcceleratorKeyPressedEventArgs` has a `Handled` property, that developers
+    /// can use to mark a key as handled. When the key is marked as handled anywhere along
+    /// the path, the event propagation stops, and web content will not receive the key.
+    /// With `IsBrowserAcceleratorKeyEnabled` property, if developers mark
+    /// `IsBrowserAcceleratorKeyEnabled` as `FALSE`, the browser will skip the WebView2
+    /// browser feature accelerator key handling process, but the event propagation
+    /// continues, and web content will receive the key combination.
+    ///
+    /// \snippet ScenarioAcceleratorKeyPressed.cpp IsBrowserAcceleratorKeyEnabled
+    /// Gets the `IsBrowserAcceleratorKeyEnabled` property.
+    unsafe fn get_is_browser_accelerator_key_enabled(
+        &self,
+        /* out, retval */ value: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Sets the `IsBrowserAcceleratorKeyEnabled` property.
+    unsafe fn put_is_browser_accelerator_key_enabled(&self, /* in */ value: BOOL) -> HRESULT;
+}
+
 /// Receives `AcceleratorKeyPressed` events.
 #[com_interface("b29c7e28-fa79-41a8-8e44-65811c76dcb2")]
 pub trait ICoreWebView2AcceleratorKeyPressedEventHandler: IUnknown {
@@ -3572,6 +6173,17 @@ pub trait ICoreWebView2NewBrowserVersionAvailableEventHandler: IUnknown {
         &self,
         /* in */ sender: *mut *mut ICoreWebView2EnvironmentVTable,
         /* in */ args: *mut *mut IUnknownVTable,
+    ) -> HRESULT;
+}
+
+/// Receives `BrowserProcessExited` events.
+#[com_interface("fa504257-a216-4911-a860-fe8825712861")]
+pub trait ICoreWebView2BrowserProcessExitedEventHandler: IUnknown {
+    /// Provides the event args for the corresponding event.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2EnvironmentVTable,
+        /* in */ args: *mut *mut ICoreWebView2BrowserProcessExitedEventArgsVTable,
     ) -> HRESULT;
 }
 
@@ -3610,6 +6222,19 @@ pub trait ICoreWebView2WebResourceResponseReceivedEventHandler: IUnknown {
     ) -> HRESULT;
 }
 
+/// Event args for the `BrowserProcessExited` event.
+#[com_interface("1f00663f-af8c-4782-9cdd-dd01c52e34cb")]
+pub trait ICoreWebView2BrowserProcessExitedEventArgs: IUnknown {
+    /// The kind of browser process exit that has occurred.
+    unsafe fn get_browser_process_exit_kind(
+        &self,
+        /* out, retval */ browser_process_exit_kind: *mut BrowserProcessExitKind,
+    ) -> HRESULT;
+
+    /// The process ID of the browser process that has exited.
+    unsafe fn get_browser_process_id(&self, /* out, retval */ value: *mut u32) -> HRESULT;
+}
+
 /// Event args for the WebResourceResponseReceived event.
 #[com_interface("D1DB483D-6796-4B8B-80FC-13712BB716F4")]
 pub trait ICoreWebView2WebResourceResponseReceivedEventArgs: IUnknown {
@@ -3646,6 +6271,9 @@ pub trait ICoreWebView2WebResourceResponseView: IUnknown {
     unsafe fn get_status_code(&self, /* out, retval */ status_code: *mut i32) -> HRESULT;
 
     /// The HTTP response reason phrase.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_reason_phrase(
         &self,
         /* out, retval */ reason_phrase: *mut LPWSTR,
@@ -3653,6 +6281,11 @@ pub trait ICoreWebView2WebResourceResponseView: IUnknown {
 
     /// Get the response content asynchronously. The handler will receive the
     /// response content stream.
+    ///
+    /// This method returns null if content size is more than 123MB or for navigations that become downloads
+    /// or if response is downloadable content type (e.g., application/octet-stream).
+    /// See `add_DownloadStarting` event to handle the response.
+    ///
     /// If this method is being called again before a first call has completed,
     /// the handler will be invoked at the same time the handlers from prior calls
     /// are invoked.
@@ -3709,9 +6342,15 @@ pub trait ICoreWebView2DOMContentLoadedEventHandler: IUnknown {
 #[com_interface("AD26D6BE-1486-43E6-BF87-A2034006CA21")]
 pub trait ICoreWebView2Cookie: IUnknown {
     /// Cookie name.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_name(&self, /* out, retval */ name: *mut LPWSTR) -> HRESULT;
 
     /// Cookie value.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_value(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
 
     /// Set the cookie value property.
@@ -3721,10 +6360,16 @@ pub trait ICoreWebView2Cookie: IUnknown {
     /// The default is the host that this cookie has been received from.
     /// Note that, for instance, ".bing.com", "bing.com", and "www.bing.com" are
     /// considered different domains.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_domain(&self, /* out, retval */ domain: *mut LPWSTR) -> HRESULT;
 
     /// The path for which the cookie is valid. The default is "/", which means
     /// this cookie will be sent to all pages on the Domain.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_path(&self, /* out, retval */ path: *mut LPWSTR) -> HRESULT;
 
     /// The expiration date and time for the cookie as the number of seconds since the UNIX epoch.
@@ -3879,13 +6524,19 @@ pub trait ICoreWebView2GetCookiesCompletedHandler: IUnknown {
     ) -> HRESULT;
 }
 
-/// Provides access to the certificate metadata
+/// Provides access to the client certificate metadata.
 #[com_interface("e7188076-bcc3-11eb-8529-0242ac130003")]
 pub trait ICoreWebView2ClientCertificate: IUnknown {
     /// Subject of the certificate.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`. See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_subject(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
 
     /// Name of the certificate authority that issued the certificate.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`. See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_issuer(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
 
     /// The valid start date and time for the certificate as the number of seconds since
@@ -3896,21 +6547,30 @@ pub trait ICoreWebView2ClientCertificate: IUnknown {
     /// the UNIX epoch.
     unsafe fn get_valid_to(&self, /* out, retval */ value: *mut f64) -> HRESULT;
 
-    /// DER encoded serial number of the certificate.
+    /// Base64 encoding of DER encoded serial number of the certificate.
     /// Read more about DER at [RFC 7468 DER]
     /// (https://tools.ietf.org/html/rfc7468#appendix-B).
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`. See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_der_encoded_serial_number(
         &self,
         /* out, retval */ value: *mut LPWSTR,
     ) -> HRESULT;
 
     /// Display name for a certificate.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`. See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_display_name(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
 
     /// PEM encoded data for the certificate.
     /// Returns Base64 encoding of DER encoded certificate.
     /// Read more about PEM at [RFC 1421 Privacy Enhanced Mail]
     /// (https://tools.ietf.org/html/rfc1421).
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`. See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn to_pem_encoding(
         &self,
         /* out, retval */ pem_encoded_data: *mut LPWSTR,
@@ -3951,6 +6611,9 @@ pub trait ICoreWebView2StringCollection: IUnknown {
     unsafe fn get_count(&self, /* out, retval */ value: *mut u32) -> HRESULT;
 
     /// Gets the value at a given index.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_value_at_index(
         &self,
         /* in */ index: u32,
@@ -3977,6 +6640,9 @@ pub trait ICoreWebView2ClientCertificateRequestedEventArgs: IUnknown {
     /// * Convert to lowercase characters for ascii characters.
     /// * Punycode is used for representing non ascii characters.
     /// * Strip square brackets for IPV6 address.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`. See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_host(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
 
     /// Port of the server that requested client certificate authentication.
@@ -3987,8 +6653,8 @@ pub trait ICoreWebView2ClientCertificateRequestedEventArgs: IUnknown {
     unsafe fn get_is_proxy(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
 
     /// Returns the `ICoreWebView2StringCollection`.
-    /// The collection contains distinguished names of certificate authorities
-    /// allowed by the server.
+    /// The collection contains Base64 encoding of DER encoded distinguished names of
+    /// certificate authorities allowed by the server.
     unsafe fn get_allowed_certificate_authorities(
         &self,
         /* out, retval */ value: *mut *mut *mut ICoreWebView2StringCollectionVTable,
@@ -4015,15 +6681,15 @@ pub trait ICoreWebView2ClientCertificateRequestedEventArgs: IUnknown {
         /* in */ value: *mut *mut ICoreWebView2ClientCertificateVTable,
     ) -> HRESULT;
 
-    /// You�may�set�this�flag�to�cancel�the�certificate selection. If canceled,
+    /// You may set this flag to cancel the certificate selection. If canceled,
     /// the request is aborted regardless of the `Handled` property. By default the
     /// value is `FALSE`.
     unsafe fn get_cancel(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
 
-    ///�Sets�the�`Cancel`�property.
+    /// Sets the `Cancel` property.
     unsafe fn put_cancel(&self, /* in */ value: BOOL) -> HRESULT;
 
-    /// You�may�set�this�flag�to�`TRUE` to respond to the server with or
+    /// You may set this flag to `TRUE` to respond to the server with or
     /// without a certificate. If this flag is `TRUE` with a `SelectedCertificate`
     /// it responds to the server with the selected certificate otherwise respond to the
     /// server without a certificate. By default the value of `Handled` and `Cancel` are `FALSE`
@@ -4031,7 +6697,7 @@ pub trait ICoreWebView2ClientCertificateRequestedEventArgs: IUnknown {
     /// choose a certificate. The `SelectedCertificate` is ignored unless `Handled` is set `TRUE`.
     unsafe fn get_handled(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
 
-    ///�Sets�the�`Handled`�property.
+    /// Sets the `Handled` property.
     unsafe fn put_handled(&self, /* in */ value: BOOL) -> HRESULT;
 
     /// Returns an `ICoreWebView2Deferral` object. Use this operation to
@@ -4400,8 +7066,18 @@ pub trait ICoreWebView2Environment: IUnknown {
     ///
     /// `parentWindow` is the `HWND` in which the WebView should be displayed and
     /// from which receive input.  The WebView adds a child window to the
-    /// provided window during WebView creation.  Z-order and other things
-    /// impacted by sibling window order are affected accordingly.
+    /// provided window before this function returns.  Z-order and other things
+    /// impacted by sibling window order are affected accordingly.  If you want to
+    /// move the WebView to a different parent after it has been created, you must
+    /// call put_ParentWindow to update tooltip positions, accessibility trees,
+    /// and such.
+    ///
+    /// HWND_MESSAGE is a valid parameter for `parentWindow` for an invisible
+    /// WebView for Windows 8 and above. In this case the window will never
+    /// become visible. You are not able to reparent the window after you have
+    /// created the WebView.  This is not supported in Windows 7 or below.
+    /// Passing this parameter in Windows 7 or below will return
+    /// ERROR_INVALID_WINDOW_HANDLE in the controller callback.
     ///
     /// It is recommended that the app set Application User Model ID for the
     /// process or the app window.  If none is set, during WebView creation a
@@ -4421,18 +7097,29 @@ pub trait ICoreWebView2Environment: IUnknown {
     ///
     /// \snippet AppWindow.cpp RestartManager
     ///
+    /// The app should retry `CreateCoreWebView2Controller` upon failure, unless the
+    /// error code is `HRESULT_FROM_WIN32(ERROR_INVALID_STATE)`.
     /// When the app retries `CreateCoreWebView2Controller` upon failure, it is
     /// recommended that the app restarts from creating a new WebView2
-    /// Environment.  If an WebView2 Runtime update happens, the version
+    /// Environment.  If a WebView2 Runtime update happens, the version
     /// associated with a WebView2 Environment may have been removed and causing
     /// the object to no longer work.  Creating a new WebView2 Environment works
     /// since it uses the latest version.
     ///
-    /// WebView creation fails if a running instance using the same user data
-    /// folder exists, and the Environment objects have different
-    /// `EnvironmentOptions`.  For example, if a WebView was created with one
-    /// language, an attempt to create a WebView with a different language using
-    /// the same user data folder fails.
+    /// WebView creation fails with `HRESULT_FROM_WIN32(ERROR_INVALID_STATE)` if a
+    /// running instance using the same user data folder exists, and the Environment
+    /// objects have different `EnvironmentOptions`.  For example, if a WebView was
+    /// created with one language, an attempt to create a WebView with a different
+    /// language using the same user data folder will fail.
+    ///
+    /// The creation will fail with `E_ABORT` if `parentWindow` is destroyed
+    /// before the creation is finished.  If this is caused by a call to
+    /// `DestroyWindow`, the creation completed handler will be invoked before
+    /// `DestroyWindow` returns, so you can use this to cancel creation and clean
+    /// up resources synchronously when quitting a thread.
+    ///
+    /// In rare cases the creation can fail with `E_UNEXPECTED` if runtime does not have
+    /// permissions to the user data folder.
     unsafe fn create_core_web_view2_controller(
         &self,
         parent_window: HWND,
@@ -4444,12 +7131,10 @@ pub trait ICoreWebView2Environment: IUnknown {
     /// to create this object with null headers string and then use the
     /// `ICoreWebView2HttpResponseHeaders` to construct the headers line by line.
     /// For more information about other parameters, navigate to
-    /// \[ICoreWebView2WebResourceResponse\]\[MicrosoftEdgeWebview2ReferenceWin32Icorewebview2webresourceresponse\].
+    /// [ICoreWebView2WebResourceResponse](/microsoft-edge/webview2/reference/win32/icorewebview2webresourceresponse).
     ///
     /// \snippet SettingsComponent.cpp WebResourceRequested0
     /// \snippet SettingsComponent.cpp WebResourceRequested1
-    ///
-    /// \[MicrosoftEdgeWebview2ReferenceWin32Icorewebview2webresourceresponse\]: /microsoft-edge/webview2/reference/win32/icorewebview2webresourceresponse "interface ICoreWebView2WebResourceResponse | Microsoft Docs"
     unsafe fn create_web_resource_response(
         &self,
         /* in */ content: *mut *mut IStreamVTable,
@@ -4463,6 +7148,9 @@ pub trait ICoreWebView2Environment: IUnknown {
     /// including channel name if it is not the WebView2 Runtime.  It matches the
     /// format of the `GetAvailableCoreWebView2BrowserVersionString` API.
     /// Channel names are `beta`, `dev`, and `canary`.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     ///
     /// \snippet AppWindow.cpp GetBrowserVersionString
     unsafe fn get_browser_version_string(
@@ -4534,6 +7222,11 @@ pub trait ICoreWebView2Environment3: ICoreWebView2Environment2 {
     /// underneath a different window, then it needs to call put_ParentWindow to
     /// update the new parent HWND of the visual tree.
     ///
+    /// HWND_MESSAGE is not a valid parameter for `parentWindow` for visual hosting.
+    /// The underlying implementation of supporting HWND_MESSAGE would break
+    /// accessibility for visual hosting. This is supported in windowed
+    /// WebViews - see CreateCoreWebView2Controller.
+    ///
     /// Use put_RootVisualTarget on the created CoreWebView2CompositionController to
     /// provide a visual to host the browser's visual tree.
     ///
@@ -4551,6 +7244,38 @@ pub trait ICoreWebView2Environment3: ICoreWebView2Environment2 {
     /// uninstalls Edge from that channel without closing the app, the app will
     /// be restarted to allow uninstallation of the dev channel to succeed.
     /// \snippet AppWindow.cpp RestartManager
+    ///
+    /// The app should retry `CreateCoreWebView2CompositionController` upon failure,
+    /// unless the error code is `HRESULT_FROM_WIN32(ERROR_INVALID_STATE)`.
+    /// When the app retries `CreateCoreWebView2CompositionController`
+    /// upon failure, it is recommended that the app restarts from creating a new
+    /// WebView2 Environment.  If a WebView2 Runtime update happens, the version
+    /// associated with a WebView2 Environment may have been removed and causing
+    /// the object to no longer work.  Creating a new WebView2 Environment works
+    /// since it uses the latest version.
+    ///
+    /// WebView creation fails with `HRESULT_FROM_WIN32(ERROR_INVALID_STATE)` if a
+    /// running instance using the same user data folder exists, and the Environment
+    /// objects have different `EnvironmentOptions`.  For example, if a WebView was
+    /// created with one language, an attempt to create a WebView with a different
+    /// language using the same user data folder will fail.
+    ///
+    /// The creation will fail with `E_ABORT` if `parentWindow` is destroyed
+    /// before the creation is finished.  If this is caused by a call to
+    /// `DestroyWindow`, the creation completed handler will be invoked before
+    /// `DestroyWindow` returns, so you can use this to cancel creation and clean
+    /// up resources synchronously when quitting a thread.
+    ///
+    /// In rare cases the creation can fail with `E_UNEXPECTED` if runtime does not have
+    /// permissions to the user data folder.
+    ///
+    /// CreateCoreWebView2CompositionController is supported in the following versions of Windows:
+    ///
+    /// - Windows 11
+    /// - Windows 10
+    /// - Windows Server 2019
+    /// - Windows Server 2016
+    ///
     unsafe fn create_core_web_view2_composition_controller(
         &self,
         parent_window: HWND,
@@ -4569,12 +7294,239 @@ pub trait ICoreWebView2Environment3: ICoreWebView2Environment2 {
 /// A continuation of the ICoreWebView2Environment3 interface.
 #[com_interface("20944379-6dcf-41d6-a0a0-abc0fc50de0d")]
 pub trait ICoreWebView2Environment4: ICoreWebView2Environment3 {
-    /// Returns the UI Automation Provider for the
-    /// ICoreWebView2CompositionController that corresponds with the given HWND.
-    unsafe fn get_provider_for_hwnd(
+    /// Returns the Automation Provider for the WebView that matches the provided
+    /// window. Host apps are expected to implement
+    /// IRawElementProviderHwndOverride. When GetOverrideProviderForHwnd is
+    /// called, the app can pass the HWND to GetAutomationProviderForWindow to
+    /// find the matching WebView Automation Provider.
+    unsafe fn get_automation_provider_for_window(
         &self,
         /* in */ hwnd: HWND,
         /* out, retval */ provider: *mut *mut *mut IUnknownVTable,
+    ) -> HRESULT;
+}
+
+/// A continuation of the `ICoreWebView2Environment4` interface that supports
+/// the `BrowserProcessExited` event.
+#[com_interface("319e423d-e0d7-4b8d-9254-ae9475de9b17")]
+pub trait ICoreWebView2Environment5: ICoreWebView2Environment4 {
+    /// Add an event handler for the `BrowserProcessExited` event.
+    /// The `BrowserProcessExited` event is raised when the collection of WebView2
+    /// Runtime processes for the browser process of this environment terminate
+    /// due to browser process failure or normal shutdown (for example, when all
+    /// associated WebViews are closed), after all resources have been released
+    /// (including the user data folder). To learn about what these processes are,
+    /// go to [Process model](/microsoft-edge/webview2/concepts/process-model).
+    ///
+    /// A handler added with this method is called until removed with
+    /// `remove_BrowserProcessExited`, even if a new browser process is bound to
+    /// this environment after earlier `BrowserProcessExited` events are raised.
+    ///
+    /// Multiple app processes can share a browser process by creating their webviews
+    /// from a `ICoreWebView2Environment` with the same user data folder. When the entire
+    /// collection of WebView2Runtime processes for the browser process exit, all
+    /// associated `ICoreWebView2Environment` objects receive the `BrowserProcessExited`
+    /// event. Multiple processes sharing the same browser process need to coordinate
+    /// their use of the shared user data folder to avoid race conditions and
+    /// unnecessary waits. For example, one process should not clear the user data
+    /// folder at the same time that another process recovers from a crash by recreating
+    /// its WebView controls; one process should not block waiting for the event if
+    /// other app processes are using the same browser process (the browser process will
+    /// not exit until those other processes have closed their webviews too).
+    ///
+    /// Note this is an event from the `ICoreWebView2Environment3` interface, not
+    /// the `ICoreWebView2` one. The difference between `BrowserProcessExited` and
+    /// `ICoreWebView2`'s `ProcessFailed` is that `BrowserProcessExited` is
+    /// raised for any **browser process** exit (expected or unexpected, after all
+    /// associated processes have exited too), while `ProcessFailed` is raised for
+    /// **unexpected** process exits of any kind (browser, render, GPU, and all
+    /// other types), or for main frame **render process** unresponsiveness. To
+    /// learn more about the WebView2 Process Model, go to
+    /// [Process model](/microsoft-edge/webview2/concepts/process-model).
+    ///
+    /// In the case the browser process crashes, both `BrowserProcessExited` and
+    /// `ProcessFailed` events are raised, but the order is not guaranteed. These
+    /// events are intended for different scenarios. It is up to the app to
+    /// coordinate the handlers so they do not try to perform reliability recovery
+    /// while also trying to move to a new WebView2 Runtime version or remove the
+    /// user data folder.
+    ///
+    /// \snippet AppWindow.cpp Close
+    unsafe fn add_browser_process_exited(
+        &self,
+        /* in */
+        event_handler: *mut *mut ICoreWebView2BrowserProcessExitedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with `add_BrowserProcessExited`.
+    unsafe fn remove_browser_process_exited(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+}
+
+/// This interface is an extension of the ICoreWebView2Environment that supports
+/// creating print settings for printing to PDF.
+#[com_interface("e59ee362-acbd-4857-9a8e-d3644d9459a9")]
+pub trait ICoreWebView2Environment6: ICoreWebView2Environment5 {
+    /// Creates the `ICoreWebView2PrintSettings` used by the `PrintToPdf`
+    /// method.
+    unsafe fn create_print_settings(
+        &self,
+        /* out, retval */ print_settings: *mut *mut *mut ICoreWebView2PrintSettingsVTable,
+    ) -> HRESULT;
+}
+
+/// This interface is an extension of the ICoreWebView2Environment. An object
+/// implementing the ICoreWebView2Environment7 interface will also
+/// implement ICoreWebView2Environment.
+#[com_interface("43C22296-3BBD-43A4-9C00-5C0DF6DD29A2")]
+pub trait ICoreWebView2Environment7: ICoreWebView2Environment6 {
+    /// Returns the user data folder that all CoreWebView2's created from this
+    /// environment are using.
+    /// This could be either the value passed in by the developer when creating
+    /// the environment object or the calculated one for default handling.  It
+    /// will always be an absolute path.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    ///
+    /// \snippet AppWindow.cpp GetUserDataFolder
+    unsafe fn get_user_data_folder(&self, /* out, retval  */ value: *mut LPWSTR) -> HRESULT;
+}
+
+/// A continuation of the `ICoreWebView2Environment7` interface that supports
+/// the `ProcessInfosChanged` event.
+#[com_interface("D6EB91DD-C3D2-45E5-BD29-6DC2BC4DE9CF")]
+pub trait ICoreWebView2Environment8: ICoreWebView2Environment7 {
+    /// Adds an event handler for the `ProcessInfosChanged` event.
+    ///
+    /// \snippet ProcessComponent.cpp ProcessInfosChanged
+    /// \snippet ProcessComponent.cpp ProcessInfosChanged1
+    unsafe fn add_process_infos_changed(
+        &self,
+        /* in */ event_handler: *mut *mut ICoreWebView2ProcessInfosChangedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with `add_ProcessInfosChanged`.
+    unsafe fn remove_process_infos_changed(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Returns the `ICoreWebView2ProcessInfoCollection`
+    /// Provide a list of all process using same user data folder except for crashpad process.
+    unsafe fn get_process_infos(
+        &self,
+        /* out, retval */ value: *mut *mut *mut ICoreWebView2ProcessInfoCollectionVTable,
+    ) -> HRESULT;
+}
+
+/// Provides a set of properties for a process in the `ICoreWebView2Environment`.
+#[com_interface("84FA7612-3F3D-4FBF-889D-FAD000492D72")]
+pub trait ICoreWebView2ProcessInfo: IUnknown {
+    /// The process id of the process.
+    unsafe fn get_process_id(&self, /* out, retval */ value: *mut i32) -> HRESULT;
+
+    /// The kind of the process.
+    unsafe fn get_kind(&self, /* out, retval */ kind: *mut ProcessKind) -> HRESULT;
+}
+
+/// A continuation of the ICoreWebView2Environment interface for
+/// creating CoreWebView2 ContextMenuItem objects.
+#[com_interface("f06f41bf-4b5a-49d8-b9f6-fa16cd29f274")]
+pub trait ICoreWebView2Environment9: ICoreWebView2Environment8 {
+    /// Create a custom `ContextMenuItem` object to insert into the WebView context menu.
+    /// CoreWebView2 will rewind the icon stream before decoding.
+    /// There is a limit of 1000 active custom context menu items at a given time.
+    /// Attempting to create more before deleting existing ones will fail with
+    /// ERROR_NOT_ENOUGH_QUOTA.
+    /// It is recommended to reuse ContextMenuItems across ContextMenuRequested events
+    /// for performance.
+    /// The returned ContextMenuItem object's `IsEnabled` property will default to `TRUE`
+    /// and `IsChecked` property will default to `FALSE`. A `CommandId` will be assigned
+    /// to the ContextMenuItem object that's unique across active custom context menu items,
+    /// but command ID values of deleted ContextMenuItems can be reassigned.
+    unsafe fn create_context_menu_item(
+        &self,
+        /* in */ label: LPCWSTR,
+        /* in */ icon_stream: *mut *mut IStreamVTable,
+        /* in */ kind: ContextMenuItemKind,
+        /* out, retval */ item: *mut *mut *mut ICoreWebView2ContextMenuItemVTable,
+    ) -> HRESULT;
+}
+
+/// This interface is used to create `ICoreWebView2ControllerOptions` object, which
+/// can be passed as a parameter in `CreateCoreWebView2ControllerWithOptions` and
+/// `CreateCoreWebView2CompositionControllerWithOptions` function for multiple profiles support.
+/// The profile will be created on disk or opened when calling `CreateCoreWebView2ControllerWithOptions` or
+/// `CreateCoreWebView2CompositionControllerWithOptions` no matter InPrivate mode is enabled or not, and
+/// it will be released in memory when the corresponding controller is closed but still remain on disk.
+/// If you create a WebView2Controller with {ProfileName="name", InPrivate=false} and then later create another
+/// one with {ProfileName="name", InPrivate=true}, these two controllers using the same profile would be allowed to
+/// run at the same time.
+/// As WebView2 is built on top of Edge browser, it follows Edge's behavior pattern. To create an InPrivate WebView,
+/// we gets an off-the-record profile (an InPrivate profile) from a regular profile, then create the WebView with the
+/// off-the-record profile.
+///
+/// \snippet AppWindow.cpp CreateControllerWithOptions
+#[com_interface("ee0eb9df-6f12-46ce-b53f-3f47b9c928e0")]
+pub trait ICoreWebView2Environment10: ICoreWebView2Environment9 {
+    /// Create a new ICoreWebView2ControllerOptions to be passed as a parameter of
+    /// CreateCoreWebView2ControllerWithOptions and CreateCoreWebView2CompositionControllerWithOptions.
+    /// The 'options' is settable and in it the default value for profile name is the empty string,
+    /// and the default value for IsInPrivateModeEnabled is false.
+    /// Also the profile name can be reused.
+    unsafe fn create_core_web_view2_controller_options(
+        &self,
+        /* out, retval */ options: *mut *mut *mut ICoreWebView2ControllerOptionsVTable,
+    ) -> HRESULT;
+
+    /// Create a new WebView with options.
+    unsafe fn create_core_web_view2_controller_with_options(
+        &self,
+        /* in */ parent_window: HWND,
+        /* in */ options: *mut *mut ICoreWebView2ControllerOptionsVTable,
+        /* in */
+        handler: *mut *mut ICoreWebView2CreateCoreWebView2ControllerCompletedHandlerVTable,
+    ) -> HRESULT;
+
+    /// Create a new WebView in visual hosting mode with options.
+    unsafe fn create_core_web_view2_composition_controller_with_options(
+        &self,
+        /* in */ parent_window: HWND,
+        /* in */ options: *mut *mut ICoreWebView2ControllerOptionsVTable,
+        /* in */
+        handler: *mut *mut ICoreWebView2CreateCoreWebView2CompositionControllerCompletedHandlerVTable,
+    ) -> HRESULT;
+}
+
+/// A list containing process id and corresponding process type.
+#[com_interface("402B99CD-A0CC-4FA5-B7A5-51D86A1D2339")]
+pub trait ICoreWebView2ProcessInfoCollection: IUnknown {
+    /// The number of process contained in the ICoreWebView2ProcessInfoCollection.
+    unsafe fn get_count(&self, /* out, retval */ count: *mut u32) -> HRESULT;
+
+    /// Gets the `ICoreWebView2ProcessInfo` located in the `ICoreWebView2ProcessInfoCollection`
+    /// at the given index.
+    unsafe fn get_value_at_index(
+        &self,
+        /* in */ index: u32,
+        /* out, retval */ process_info: *mut *mut *mut ICoreWebView2ProcessInfoVTable,
+    ) -> HRESULT;
+}
+
+/// An event handler for the `ProcessInfosChanged` event.
+#[com_interface("F4AF0C39-44B9-40E9-8B11-0484CFB9E0A1")]
+pub trait ICoreWebView2ProcessInfosChangedEventHandler: IUnknown {
+    /// Provides the event args for the corresponding event.  No event args exist
+    /// and the `args` parameter is set to `null`.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2EnvironmentVTable,
+        /* in */ args: *mut *mut IUnknownVTable,
     ) -> HRESULT;
 }
 
@@ -4587,7 +7539,7 @@ pub trait ICoreWebView2EnvironmentOptions: IUnknown {
     /// Changes the behavior of the WebView.  The arguments are passed to the
     /// browser process as part of the command.  For more information about
     /// using command-line switches with Chromium browser processes, navigate to
-    /// \[Run Chromium with Flags\]\[ChromiumDevelopersHowTosRunWithFlags\].
+    /// [Run Chromium with Flags](https://www.chromium.org/developers/how-tos/run-chromium-with-flags).
     /// The value appended to a switch is appended to the browser process, for
     /// example, in `--edge-webview-switches=xxx` the value is `xxx`.  If you
     /// specify a switch that is important to WebView functionality, it is
@@ -4605,32 +7557,34 @@ pub trait ICoreWebView2EnvironmentOptions: IUnknown {
     /// If you specify command-line switches and use the
     /// `additionalBrowserArguments` parameter, the `--edge-webview-switches`
     /// value takes precedence and is processed last.  If a switch fails to
-    /// parse, the switched is ignored.  The default state for the operation is
+    /// parse, the switch is ignored.  The default state for the operation is
     /// to run the browser process with no extra flags.
     ///
-    /// <!--TODO: replace https://aka.ms/RunChromiumWithFlags link with go link in the following line and delete this line.  -->
-    /// \[ChromiumDevelopersHowTosRunWithFlags\]: https://www.chromium.org/developers/how-tos/run-chromium-with-flags "Run Chromium with flags | The Chromium Projects"
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_additional_browser_arguments(
         &self,
         /* out, retval */ value: *mut LPWSTR,
     ) -> HRESULT;
 
     /// Sets the `AdditionalBrowserArguments` property.
+    ///
+    /// Please note that calling this API twice will replace the previous value
+    /// rather than appending to it. If there are multiple switches, there
+    /// should be a space in between them. The one exception is if multiple
+    /// features are being enabled/disabled for a single switch, in which
+    /// case the features should be comma-seperated.
+    /// Ex. "--disable-features=feature1,feature2 --some-other-switch --do-something"
     unsafe fn put_additional_browser_arguments(&self, /* in */ value: LPCWSTR) -> HRESULT;
 
     /// The default display language for WebView.  It applies to browser UI such as
     /// context menu and dialogs.  It also applies to the `accept-languages` HTTP
-    ///  header that WebView sends to websites.  It is in the format of
-    /// `language[-country]` where `language` is the 2-letter code from
-    /// <!--TODO: Update the link in the following line and delete this line.  -->
-    /// \[ISO 639\]\[ISO639LanguageCodesHtml\]
-    /// and `country` is the
-    /// 2-letter code from
-    /// \[ISO 3166\]\[ISOStandard72482Html\].
+    ///  header that WebView sends to websites. The intended locale value is in the
+    /// format of BCP 47 Language Tags. More information can be found from
+    /// [IETF BCP47](https://www.ietf.org/rfc/bcp/bcp47.html).
     ///
-    /// \[ISO639LanguageCodesHtml\]: https://www.iso.org/iso-639-language-codes.html "ISO 639 | ISO"
-    ///
-    /// \[ISOStandard72482Html\]: https://www.iso.org/standard/72482.html "ISO 3166-1:2020 | ISO"
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_language(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
 
     /// Sets the `Language` property.
@@ -4647,6 +7601,9 @@ pub trait ICoreWebView2EnvironmentOptions: IUnknown {
     /// `TargetCompatibleBrowserVersion`.  The binaries are only guaranteed to be
     /// compatible.  Verify the actual version on the `BrowserVersionString`
     /// property on the `ICoreWebView2Environment`.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_target_compatible_browser_version(
         &self,
         /* out, retval */ value: *mut LPWSTR,
@@ -4662,10 +7619,8 @@ pub trait ICoreWebView2EnvironmentOptions: IUnknown {
     /// for the account associated for Windows account login, if any.
     /// Default is disabled. Universal Windows Platform apps must also declare
     /// `enterpriseCloudSSO`
-    /// \[Restricted capabilities\]\[WindowsUwpPackagingAppCapabilityDeclarationsRestrictedCapabilities\]
+    /// [Restricted capabilities](/windows/uwp/packaging/app-capability-declarations\#restricted-capabilities)
     /// for the single sign on (SSO) to work.
-    ///
-    /// \[WindowsUwpPackagingAppCapabilityDeclarationsRestrictedCapabilities\]: /windows/uwp/packaging/app-capability-declarations\#restricted-capabilities "Restricted capabilities - App capability declarations | Microsoft Docs"
     unsafe fn get_allow_single_sign_on_using_osprimary_account(
         &self,
         /* out, retval */ allow: *mut BOOL,
@@ -4675,6 +7630,190 @@ pub trait ICoreWebView2EnvironmentOptions: IUnknown {
     unsafe fn put_allow_single_sign_on_using_osprimary_account(
         &self,
         /* in */ allow: BOOL,
+    ) -> HRESULT;
+}
+
+/// Additional options used to create WebView2 Environment.  A default implementation is
+/// provided in `WebView2EnvironmentOptions.h`.
+///
+/// \snippet AppWindow.cpp CreateCoreWebView2EnvironmentWithOptions
+#[com_interface("FF85C98A-1BA7-4A6B-90C8-2B752C89E9E2")]
+pub trait ICoreWebView2EnvironmentOptions2: IUnknown {
+    /// Whether other processes can create WebView2 from WebView2Environment created with the
+    /// same user data folder and therefore sharing the same WebView browser process instance.
+    /// Default is FALSE.
+    unsafe fn get_exclusive_user_data_folder_access(
+        &self,
+        /* out, retval */ value: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Sets the `ExclusiveUserDataFolderAccess` property.
+    /// The `ExclusiveUserDataFolderAccess` property specifies that the WebView environment
+    /// obtains exclusive access to the user data folder.
+    /// If the user data folder is already being used by another WebView environment with a
+    /// different value for `ExclusiveUserDataFolderAccess` property, the creation of a WebView2Controller
+    /// using the environment object will fail with `HRESULT_FROM_WIN32(ERROR_INVALID_STATE)`.
+    /// When set as TRUE, no other WebView can be created from other processes using WebView2Environment
+    /// objects with the same UserDataFolder. This prevents other processes from creating WebViews
+    /// which share the same browser process instance, since sharing is performed among
+    /// WebViews that have the same UserDataFolder. When another process tries to create a
+    /// WebView2Controller from an WebView2Environment object created with the same user data folder,
+    /// it will fail with `HRESULT_FROM_WIN32(ERROR_INVALID_STATE)`.
+    unsafe fn put_exclusive_user_data_folder_access(&self, /* in */ value: BOOL) -> HRESULT;
+}
+
+/// Additional options used to create WebView2 Environment to manage crash
+/// reporting.
+#[com_interface("4A5C436E-A9E3-4A2E-89C3-910D3513F5CC")]
+pub trait ICoreWebView2EnvironmentOptions3: IUnknown {
+    /// When `IsCustomCrashReportingEnabled` is set to `TRUE`, Windows won't send crash data to Microsoft endpoint.
+    /// `IsCustomCrashReportingEnabled` is default to be `FALSE`, in this case, WebView will respect OS consent.
+    unsafe fn get_is_custom_crash_reporting_enabled(
+        &self,
+        /* out, retval */ value: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Sets the `IsCustomCrashReportingEnabled` property.
+    unsafe fn put_is_custom_crash_reporting_enabled(&self, /* in */ value: BOOL) -> HRESULT;
+}
+
+/// Additional options used to create WebView2 Environment that manages custom scheme registration.
+#[com_interface("ac52d13f-0d38-475a-9dca-876580d6793e")]
+pub trait ICoreWebView2EnvironmentOptions4: IUnknown {
+    /// Array of custom scheme registrations. The returned
+    /// ICoreWebView2CustomSchemeRegistration pointers must be released, and the
+    /// array itself must be deallocated with CoTaskMemFree.
+    unsafe fn get_custom_scheme_registrations(
+        &self,
+        /* out */ count: *mut u32,
+        /* out */
+        scheme_registrations: *mut *mut *mut *mut ICoreWebView2CustomSchemeRegistrationVTable,
+    ) -> HRESULT;
+
+    /// Set the array of custom scheme registrations to be used.
+    /// \snippet AppWindow.cpp CoreWebView2CustomSchemeRegistration
+    unsafe fn set_custom_scheme_registrations(
+        &self,
+        /* in */ count: u32,
+        /* in */
+        scheme_registrations: *mut *mut *mut ICoreWebView2CustomSchemeRegistrationVTable,
+    ) -> HRESULT;
+}
+
+/// Additional options used to create WebView2 Environment to manage tracking
+/// prevention.
+#[com_interface("0AE35D64-C47F-4464-814E-259C345D1501")]
+pub trait ICoreWebView2EnvironmentOptions5: IUnknown {
+    /// The `EnableTrackingPrevention` property is used to enable/disable tracking prevention
+    /// feature in WebView2. This property enable/disable tracking prevention for all the
+    /// WebView2's created in the same environment. By default this feature is enabled to block
+    /// potentially harmful trackers and trackers from sites that aren't visited before and set to
+    /// `COREWEBVIEW2_TRACKING_PREVENTION_LEVEL_BALANCED` or whatever value was last changed/persisted
+    /// on the profile.
+    ///
+    /// You can set this property to false to disable the tracking prevention feature if the app only
+    /// renders content in the WebView2 that is known to be safe. Disabling this feature when creating
+    /// environment also improves runtime performance by skipping related code.
+    ///
+    /// You shouldn't disable this property if WebView2 is being used as a "full browser" with arbitrary
+    /// navigation and should protect end user privacy.
+    ///
+    /// There is `ICoreWebView2Profile3::PreferredTrackingPreventionLevel` property to control levels of
+    /// tracking prevention of the WebView2's associated with a same profile. However, you can also disable
+    /// tracking prevention later using `ICoreWebView2Profile3::PreferredTrackingPreventionLevel` property and
+    /// `COREWEBVIEW2_TRACKING_PREVENTION_LEVEL_NONE` value but that doesn't improves runtime performance.
+    ///
+    /// See `ICoreWebView2Profile3::PreferredTrackingPreventionLevel` for more details.
+    ///
+    /// Tracking prevention protects users from online tracking by restricting the ability of trackers to
+    /// access browser-based storage as well as the network. See [Tracking prevention](/microsoft-edge/web-platform/tracking-prevention).
+    unsafe fn get_enable_tracking_prevention(
+        &self,
+        /* out, retval */ value: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Sets the `EnableTrackingPrevention` property.
+    unsafe fn put_enable_tracking_prevention(&self, /* in */ value: BOOL) -> HRESULT;
+}
+
+/// Additional options used to create WebView2 Environment to manage browser extensions.
+#[com_interface("57D29CC3-C84F-42A0-B0E2-EFFBD5E179DE")]
+pub trait ICoreWebView2EnvironmentOptions6: IUnknown {
+    /// When `AreBrowserExtensionsEnabled` is set to `TRUE`, new extensions can be added to user
+    /// profile and used. `AreBrowserExtensionsEnabled` is default to be `FALSE`, in this case,
+    /// new extensions can't be installed, and already installed extension won't be
+    /// available to use in user profile.
+    /// If connecting to an already running environment with a different value for `AreBrowserExtensionsEnabled`
+    /// property, it will fail with `HRESULT_FROM_WIN32(ERROR_INVALID_STATE)`.
+    /// See `ICoreWebView2BrowserExtension` for Extensions API details.
+    unsafe fn get_are_browser_extensions_enabled(
+        &self,
+        /* out, retval */ value: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Sets the `AreBrowserExtensionsEnabled` property.
+    unsafe fn put_are_browser_extensions_enabled(&self, /* in */ value: BOOL) -> HRESULT;
+}
+
+/// Additional options used to create WebView2 Environment.
+///
+#[com_interface("7c7ecf51-e918-5caf-853c-e9a2bcc27775")]
+pub trait ICoreWebView2EnvironmentOptions8: IUnknown {
+    /// Gets the `ScrollBarStyle` property.
+    unsafe fn get_scroll_bar_style(
+        &self,
+        /* out, retval */ value: *mut ScrollbarStyle,
+    ) -> HRESULT;
+
+    /// The ScrollBar style being set on the WebView2 Environment.
+    /// The default value is `COREWEBVIEW2_SCROLLBAR_STYLE_DEFAULT`
+    /// which specifies the default browser ScrollBar style.
+    /// The `color-scheme` CSS property needs to be set on the corresponding page
+    /// to allow ScrollBar to follow light or dark theme. Please see
+    /// [color-scheme](https://developer.mozilla.org/docs/Web/CSS/color-scheme#declaring_color_scheme_preferences)
+    /// for how `color-scheme` can be set.
+    /// CSS styles that modify the ScrollBar applied on top of native ScrollBar styling
+    /// that is selected with `ScrollBarStyle`.
+    ///
+    unsafe fn put_scroll_bar_style(&self, /* in */ value: ScrollbarStyle) -> HRESULT;
+}
+
+/// A continuation of the ICoreWebView2Environment interface for
+/// getting the crash dump folder path.
+#[com_interface("F0913DC6-A0EC-42EF-9805-91DFF3A2966A")]
+pub trait ICoreWebView2Environment11: ICoreWebView2Environment10 {
+    /// `FailureReportFolderPath` returns the path of the folder where minidump files are written.
+    /// Whenever a WebView2 process crashes, a crash dump file will be created in the crash dump folder.
+    /// The crash dump format is minidump files. Please see
+    /// [Minidump Files documentation](/windows/win32/debug/minidump-files) for detailed information.
+    /// Normally when a single child process fails, a minidump will be generated and written to disk,
+    /// then the `ProcessFailed` event is raised. But for unexpected crashes, a minidump file might not be generated
+    /// at all, despite whether `ProcessFailed` event is raised. If there are multiple
+    /// process failures at once, multiple minidump files could be generated. Thus `FailureReportFolderPath`
+    /// could contain old minidump files that are not associated with a specific `ProcessFailed` event.
+    /// \snippet AppWindow.cpp GetFailureReportFolder
+    unsafe fn get_failure_report_folder_path(
+        &self,
+        /* out, retval */ value: *mut LPWSTR,
+    ) -> HRESULT;
+}
+
+/// A continuation of the ICoreWebView2Environment interface for creating shared buffer object.
+#[com_interface("F503DB9B-739F-48DD-B151-FDFCF253F54E")]
+pub trait ICoreWebView2Environment12: ICoreWebView2Environment11 {
+    /// Create a shared memory based buffer with the specified size in bytes.
+    /// The buffer can be shared with web contents in WebView by calling
+    /// `PostSharedBufferToScript` on `CoreWebView2` or `CoreWebView2Frame` object.
+    /// Once shared, the same content of the buffer will be accessible from both
+    /// the app process and script in WebView. Modification to the content will be visible
+    /// to all parties that have access to the buffer.
+    /// The shared buffer is presented to the script as ArrayBuffer. All JavaScript APIs
+    /// that work for ArrayBuffer including Atomics APIs can be used on it.
+    /// There is currently a limitation that only size less than 2GB is supported.
+    unsafe fn create_shared_buffer(
+        &self,
+        /* in */ size: u64,
+        /* out, retval */ shared_buffer: *mut *mut *mut ICoreWebView2SharedBufferVTable,
     ) -> HRESULT;
 }
 
@@ -4717,11 +7856,88 @@ pub trait ICoreWebView2DevToolsProtocolEventReceiver: IUnknown {
     ) -> HRESULT;
 }
 
-/// WebView2Frame provides direct access to the iframes information.
+/// A continuation of the ICoreWebView2Environment interface for getting process
+/// with associated information.
+#[com_interface("af641f58-72b2-11ee-b962-0242ac120002")]
+pub trait ICoreWebView2Environment13: ICoreWebView2Environment12 {
+    /// Gets a snapshot collection of `ProcessExtendedInfo`s corresponding to all
+    /// currently running processes associated with this `CoreWebView2Environment`
+    /// excludes crashpad process.
+    /// This provides the same list of `ProcessInfo`s as what's provided in
+    /// `GetProcessInfos`, but additionally provides a list of associated `FrameInfo`s
+    /// which are actively running (showing or hiding UI elements) in the renderer
+    /// process. See `AssociatedFrameInfos` for more information.
+    ///
+    /// \snippet ProcessComponent.cpp GetProcessExtendedInfos
+    unsafe fn get_process_extended_infos(
+        &self,
+        /* in */
+        handler: *mut *mut ICoreWebView2GetProcessExtendedInfosCompletedHandlerVTable,
+    ) -> HRESULT;
+}
+
+/// Receives the result of the `GetProcessExtendedInfos` method.
+/// The result is written to the collection of `ProcessExtendedInfo`s provided
+/// in the `GetProcessExtendedInfos` method call.
+#[com_interface("f45e55aa-3bc2-11ee-be56-0242ac120002")]
+pub trait ICoreWebView2GetProcessExtendedInfosCompletedHandler: IUnknown {
+    /// Provides the process extended info list for the `GetProcessExtendedInfos`.
+    unsafe fn invoke(
+        &self,
+        /* in */ error_code: HRESULT,
+        /* in */ value: *mut *mut ICoreWebView2ProcessExtendedInfoCollectionVTable,
+    ) -> HRESULT;
+}
+
+/// Provides process with associated extended information in the `ICoreWebView2Environment`.
+#[com_interface("af4c4c2e-45db-11ee-be56-0242ac120002")]
+pub trait ICoreWebView2ProcessExtendedInfo: IUnknown {
+    /// The process info of the current process.
+    unsafe fn get_process_info(
+        &self,
+        /* out, retval */ process_info: *mut *mut *mut ICoreWebView2ProcessInfoVTable,
+    ) -> HRESULT;
+
+    /// The collection of associated `FrameInfo`s which are actively running
+    /// (showing or hiding UI elements) in this renderer process. `AssociatedFrameInfos`
+    /// will only be populated when this `CoreWebView2ProcessExtendedInfo`
+    /// corresponds to a renderer process. Non-renderer processes will always
+    /// have an empty `AssociatedFrameInfos`. The `AssociatedFrameInfos` may
+    /// also be empty for renderer processes that have no active frames.
+    ///
+    /// \snippet ProcessComponent.cpp AssociatedFrameInfos
+    unsafe fn get_associated_frame_infos(
+        &self,
+        /* out, retval */ frames: *mut *mut *mut ICoreWebView2FrameInfoCollectionVTable,
+    ) -> HRESULT;
+}
+
+/// A list containing processInfo and associated extended information.
+#[com_interface("32efa696-407a-11ee-be56-0242ac120002")]
+pub trait ICoreWebView2ProcessExtendedInfoCollection: IUnknown {
+    /// The number of process contained in the `ICoreWebView2ProcessExtendedInfoCollection`.
+    unsafe fn get_count(&self, /* out, retval */ count: *mut u32) -> HRESULT;
+
+    /// Gets the `ICoreWebView2ProcessExtendedInfo` located in the
+    /// `ICoreWebView2ProcessExtendedInfoCollection` at the given index.
+    unsafe fn get_value_at_index(
+        &self,
+        /* in */ index: u32,
+        /* out, retval */
+        process_info: *mut *mut *mut ICoreWebView2ProcessExtendedInfoVTable,
+    ) -> HRESULT;
+}
+
+/// ICoreWebView2Frame provides direct access to the iframes information.
+/// You can get an ICoreWebView2Frame by handling the ICoreWebView2_4::add_FrameCreated event.
 #[com_interface("f1131a5e-9ba9-11eb-a8b3-0242ac130003")]
 pub trait ICoreWebView2Frame: IUnknown {
-    /// The name of the iframe from the iframe html tag declaring it.
-    /// Calling this method fails if it is called after the iframe is destroyed.
+    /// The value of iframe's window.name property. The default value equals to
+    /// iframe html tag declaring it. You can access this property even if the
+    /// iframe is destroyed.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_name(&self, /* out, retval  */ name: *mut LPWSTR) -> HRESULT;
 
     /// Raised when the iframe changes its window.name property.
@@ -4755,6 +7971,8 @@ pub trait ICoreWebView2Frame: IUnknown {
     /// all origins. We suggest not to use this feature without understanding
     /// security implications of giving access to host object from from iframes
     /// with unknown origins.
+    /// 4. list with "file://" element - host object will be available for iframes
+    /// loaded via file protocol.
     /// Calling this method fails if it is called after the iframe is destroyed.
     /// \snippet ScenarioAddHostObject.cpp AddHostObjectToScriptWithOrigins
     /// For more information about host objects navigate to
@@ -4793,6 +8011,168 @@ pub trait ICoreWebView2Frame: IUnknown {
     unsafe fn is_destroyed(&self, /* out, retval  */ destroyed: *mut BOOL) -> HRESULT;
 }
 
+/// A continuation of the ICoreWebView2Frame interface with navigation events,
+/// executing script and posting web messages.
+#[com_interface("7a6a5834-d185-4dbf-b63f-4a9bc43107d4")]
+pub trait ICoreWebView2Frame2: ICoreWebView2Frame {
+    /// Add an event handler for the `NavigationStarting` event.
+    /// A frame navigation will raise a `NavigationStarting` event and
+    /// a `CoreWebView2.FrameNavigationStarting` event. All of the
+    /// `FrameNavigationStarting` event handlers for the current frame will be
+    /// run before the `NavigationStarting` event handlers. All of the event handlers
+    /// share a common `NavigationStartingEventArgs` object. Whichever event handler is
+    /// last to change the `NavigationStartingEventArgs.Cancel` property will
+    /// decide if the frame navigation will be cancelled. Redirects raise this
+    /// event as well, and the navigation id is the same as the original one.
+    ///
+    /// Navigations will be blocked until all `NavigationStarting` and
+    /// `CoreWebView2.FrameNavigationStarting` event handlers return.
+    unsafe fn add_navigation_starting(
+        &self,
+        /* in */
+        event_handler: *mut *mut ICoreWebView2FrameNavigationStartingEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with `add_NavigationStarting`.
+    unsafe fn remove_navigation_starting(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Add an event handler for the `ContentLoading` event.  `ContentLoading`
+    /// triggers before any content is loaded, including scripts added with
+    /// `AddScriptToExecuteOnDocumentCreated`.  `ContentLoading` does not trigger
+    /// if a same page navigation occurs (such as through `fragment`
+    /// navigations or `history.pushState` navigations).  This operation
+    /// follows the `NavigationStarting` and precedes `NavigationCompleted` events.
+    unsafe fn add_content_loading(
+        &self,
+        /* in */ event_handler: *mut *mut ICoreWebView2FrameContentLoadingEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with `add_ContentLoading`.
+    unsafe fn remove_content_loading(&self, /* in */ token: EventRegistrationToken) -> HRESULT;
+
+    /// Add an event handler for the `NavigationCompleted` event.
+    /// `NavigationCompleted` runs when the CoreWebView2Frame has completely
+    /// loaded (concurrently when `body.onload` runs) or loading stopped with error.
+    unsafe fn add_navigation_completed(
+        &self,
+        /* in */
+        event_handler: *mut *mut ICoreWebView2FrameNavigationCompletedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with `add_NavigationCompleted`.
+    unsafe fn remove_navigation_completed(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Add an event handler for the DOMContentLoaded event.
+    /// DOMContentLoaded is raised when the iframe html document has been parsed.
+    /// This aligns with the document's DOMContentLoaded event in html.
+    unsafe fn add_domcontent_loaded(
+        &self,
+        /* in */
+        event_handler: *mut *mut ICoreWebView2FrameDOMContentLoadedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with add_DOMContentLoaded.
+    unsafe fn remove_domcontent_loaded(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Run JavaScript code from the javascript parameter in the current frame.
+    /// The result of evaluating the provided JavaScript is passed to the completion handler.
+    /// The result value is a JSON encoded string. If the result is undefined,
+    /// contains a reference cycle, or otherwise is not able to be encoded into
+    /// JSON, then the result is considered to be null, which is encoded
+    /// in JSON as the string "null".
+    ///
+    /// \> [!NOTE]\n\> A function that has no explicit return value returns undefined. If the
+    /// script that was run throws an unhandled exception, then the result is
+    /// also "null". This method is applied asynchronously. If the method is
+    /// run before `ContentLoading`, the script will not be executed
+    /// and the string "null" will be returned.
+    /// This operation executes the script even if `ICoreWebView2Settings::IsScriptEnabled` is
+    /// set to `FALSE`.
+    ///
+    /// \snippet ScenarioDOMContentLoaded.cpp ExecuteScriptFrame
+    unsafe fn execute_script(
+        &self,
+        /* in */ java_script: LPCWSTR,
+        /* in */ handler: *mut *mut ICoreWebView2ExecuteScriptCompletedHandlerVTable,
+    ) -> HRESULT;
+
+    /// Posts the specified webMessage to the frame.
+    /// The frame receives the message by subscribing to the `message` event of
+    /// the `window.chrome.webview` of the frame document.
+    ///
+    /// ```cpp
+    /// window.chrome.webview.addEventListener('message', handler)
+    /// window.chrome.webview.removeEventListener('message', handler)
+    /// ```
+    ///
+    /// The event args is an instances of `MessageEvent`. The
+    /// `ICoreWebView2Settings::IsWebMessageEnabled` setting must be `TRUE` or
+    /// the message will not be sent. The `data` property of the event
+    /// args is the `webMessage` string parameter parsed as a JSON string into a
+    /// JavaScript object. The `source` property of the event args is a reference
+    /// to the `window.chrome.webview` object.  For information about sending
+    /// messages from the HTML document in the WebView to the host, navigate to
+    /// [add_WebMessageReceived](/microsoft-edge/webview2/reference/win32/icorewebview2#add_webmessagereceived).
+    /// The message is delivered asynchronously. If a navigation occurs before the
+    /// message is posted to the page, the message is discarded.
+    unsafe fn post_web_message_as_json(
+        &self,
+        /* in */ web_message_as_json: LPCWSTR,
+    ) -> HRESULT;
+
+    /// Posts a message that is a simple string rather than a JSON string
+    /// representation of a JavaScript object. This behaves in exactly the same
+    /// manner as `PostWebMessageAsJson`, but the `data` property of the event
+    /// args of the `window.chrome.webview` message is a string with the same
+    /// value as `webMessageAsString`. Use this instead of
+    /// `PostWebMessageAsJson` if you want to communicate using simple strings
+    /// rather than JSON objects.
+    unsafe fn post_web_message_as_string(
+        &self,
+        /* in */ web_message_as_string: LPCWSTR,
+    ) -> HRESULT;
+
+    /// Add an event handler for the `WebMessageReceived` event.
+    /// `WebMessageReceived` runs when the
+    /// `ICoreWebView2Settings::IsWebMessageEnabled` setting is set and the
+    /// frame document runs `window.chrome.webview.postMessage`.
+    /// The `postMessage` function is `void postMessage(object)`
+    /// where object is any object supported by JSON conversion.
+    ///
+    /// \snippet assets\ScenarioWebMessage.html chromeWebView
+    ///
+    /// When the frame calls `postMessage`, the object parameter is converted to a
+    /// JSON string and is posted asynchronously to the host process. This will
+    /// result in the handlers `Invoke` method being called with the JSON string
+    /// as its parameter.
+    ///
+    /// \snippet ScenarioWebMessage.cpp WebMessageReceivedIFrame
+    unsafe fn add_web_message_received(
+        &self,
+        /* in */ handler: *mut *mut ICoreWebView2FrameWebMessageReceivedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with `add_WebMessageReceived`.
+    unsafe fn remove_web_message_received(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+}
+
 /// Receives `FrameCreated` event.
 #[com_interface("38059770-9baa-11eb-a8b3-0242ac130003")]
 pub trait ICoreWebView2FrameCreatedEventHandler: IUnknown {
@@ -4813,6 +8193,61 @@ pub trait ICoreWebView2FrameNameChangedEventHandler: IUnknown {
         &self,
         /* in */ sender: *mut *mut ICoreWebView2FrameVTable,
         /* in */ args: *mut *mut IUnknownVTable,
+    ) -> HRESULT;
+}
+
+/// Receives `NavigationStarting` events for iframe.
+#[com_interface("e79908bf-2d5d-4968-83db-263fea2c1da3")]
+pub trait ICoreWebView2FrameNavigationStartingEventHandler: IUnknown {
+    /// Provides the event args for the corresponding event.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2FrameVTable,
+        /* in */ args: *mut *mut ICoreWebView2NavigationStartingEventArgsVTable,
+    ) -> HRESULT;
+}
+
+/// Receives `ContentLoading` events for iframe.
+#[com_interface("0d6156f2-d332-49a7-9e03-7d8f2feeee54")]
+pub trait ICoreWebView2FrameContentLoadingEventHandler: IUnknown {
+    /// Provides the event args for the corresponding event.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2FrameVTable,
+        /* in */ args: *mut *mut ICoreWebView2ContentLoadingEventArgsVTable,
+    ) -> HRESULT;
+}
+
+/// Receives `NavigationCompleted` events for iframe.
+#[com_interface("609302ad-0e36-4f9a-a210-6a45272842a9")]
+pub trait ICoreWebView2FrameNavigationCompletedEventHandler: IUnknown {
+    /// Provides the event args for the corresponding event.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2FrameVTable,
+        /* in */ args: *mut *mut ICoreWebView2NavigationCompletedEventArgsVTable,
+    ) -> HRESULT;
+}
+
+/// Receives `DOMContentLoaded` events for iframe.
+#[com_interface("38d9520d-340f-4d1e-a775-43fce9753683")]
+pub trait ICoreWebView2FrameDOMContentLoadedEventHandler: IUnknown {
+    /// Provides the event args for the corresponding event.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2FrameVTable,
+        /* in */ args: *mut *mut ICoreWebView2DOMContentLoadedEventArgsVTable,
+    ) -> HRESULT;
+}
+
+/// Receives `WebMessageReceived` events for iframe.
+#[com_interface("e371e005-6d1d-4517-934b-a8f1629c62a5")]
+pub trait ICoreWebView2FrameWebMessageReceivedEventHandler: IUnknown {
+    /// Provides the event args for the corresponding event.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2FrameVTable,
+        /* in */ args: *mut *mut ICoreWebView2WebMessageReceivedEventArgsVTable,
     ) -> HRESULT;
 }
 
@@ -4872,6 +8307,9 @@ pub trait ICoreWebView2DownloadStartingEventArgs: IUnknown {
     /// is an absolute path, including the file name, and that the path does not
     /// point to an existing file. If the path points to an existing file, the
     /// file will be overwritten. If the directory does not exist, it is created.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_result_file_path(
         &self,
         /* out, retval */ result_file_path: *mut LPWSTR,
@@ -4988,15 +8426,24 @@ pub trait ICoreWebView2DownloadOperation: IUnknown {
     unsafe fn remove_state_changed(&self, /* in */ token: EventRegistrationToken) -> HRESULT;
 
     /// The URI of the download.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_uri(&self, /* out, retval */ uri: *mut LPWSTR) -> HRESULT;
 
     /// The Content-Disposition header value from the download's HTTP response.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_content_disposition(
         &self,
         /* out, retval */ content_disposition: *mut LPWSTR,
     ) -> HRESULT;
 
     /// MIME type of the downloaded content.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_mime_type(&self, /* out, retval */ mime_type: *mut LPWSTR) -> HRESULT;
 
     /// The expected size of the download in total number of bytes based on the
@@ -5010,6 +8457,9 @@ pub trait ICoreWebView2DownloadOperation: IUnknown {
     unsafe fn get_bytes_received(&self, /* out, retval */ bytes_received: *mut i64) -> HRESULT;
 
     /// The estimated end time in [ISO 8601 Date and Time Format](https://www.iso.org/iso-8601-date-and-time-format.html).
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_estimated_end_time(
         &self,
         /* out, retval */ estimated_end_time: *mut LPWSTR,
@@ -5017,6 +8467,9 @@ pub trait ICoreWebView2DownloadOperation: IUnknown {
 
     /// The absolute path to the download file, including file name. Host can change
     /// this from `ICoreWebView2DownloadStartingEventArgs`.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_result_file_path(
         &self,
         /* out, retval */ result_file_path: *mut LPWSTR,
@@ -5064,22 +8517,27 @@ pub trait ICoreWebView2DownloadOperation: IUnknown {
     unsafe fn get_can_resume(&self, /* out, retval */ can_resume: *mut BOOL) -> HRESULT;
 }
 
-/// A continuation of the ICoreWebView2ProcessFailedEventArgs interface.
+/// A continuation of the `ICoreWebView2ProcessFailedEventArgs` interface.
 #[com_interface("4dab9422-46fa-4c3e-a5d2-41d2071d3680")]
 pub trait ICoreWebView2ProcessFailedEventArgs2: ICoreWebView2ProcessFailedEventArgs {
-    /// The reason for the process failure. The reason is always
-    /// `COREWEBVIEW2_PROCESS_FAILED_REASON_UNEXPECTED` when `ProcessFailedKind`
-    /// is `COREWEBVIEW2_PROCESS_FAILED_KIND_BROWSER_PROCESS_EXITED`, and
-    /// `COREWEBVIEW2_PROCESS_FAILED_REASON_UNRESPONSIVE` when `ProcessFailedKind`
-    /// is `COREWEBVIEW2_PROCESS_FAILED_KIND_RENDER_PROCESS_UNRESPONSIVE`.
-    /// For other process failure kinds, the reason may be any of the reason
-    /// values.
+    /// The reason for the process failure. Some of the reasons are only
+    /// applicable to specific values of
+    /// `ICoreWebView2ProcessFailedEventArgs::ProcessFailedKind`, and the
+    /// following `ProcessFailedKind` values always return the indicated reason
+    /// value:
+    ///
+    /// ProcessFailedKind | Reason
+    /// ---|---
+    /// COREWEBVIEW2_PROCESS_FAILED_KIND_BROWSER_PROCESS_EXITED | COREWEBVIEW2_PROCESS_FAILED_REASON_UNEXPECTED
+    /// COREWEBVIEW2_PROCESS_FAILED_KIND_RENDER_PROCESS_UNRESPONSIVE | COREWEBVIEW2_PROCESS_FAILED_REASON_UNRESPONSIVE
+    ///
+    /// For other `ProcessFailedKind` values, the reason may be any of the reason
+    /// values. To learn about what these values mean, see
+    /// `COREWEBVIEW2_PROCESS_FAILED_REASON`.
     unsafe fn get_reason(&self, /* out, retval */ reason: *mut ProcessFailedReason) -> HRESULT;
 
     /// The exit code of the failing process, for telemetry purposes. The exit
-    /// code is always `1` when `ProcessFailedKind` is
-    /// `COREWEBVIEW2_PROCESS_FAILED_KIND_BROWSER_PROCESS_EXITED`, and
-    /// `STILL_ACTIVE` (`259`) when `ProcessFailedKind` is
+    /// code is always `STILL_ACTIVE` (`259`) when `ProcessFailedKind` is
     /// `COREWEBVIEW2_PROCESS_FAILED_KIND_RENDER_PROCESS_UNRESPONSIVE`.
     unsafe fn get_exit_code(&self, /* out, retval */ exit_code: *mut i32) -> HRESULT;
 
@@ -5089,6 +8547,9 @@ pub trait ICoreWebView2ProcessFailedEventArgs2: ICoreWebView2ProcessFailedEventA
     /// example, "Audio Service", "Video Capture") and plugin processes (for
     /// example, "Flash"). The returned `processDescription` is empty if the
     /// WebView2 Runtime did not assign a description to the process.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_process_description(
         &self,
         /* out, retval */ process_description: *mut LPWSTR,
@@ -5133,6 +8594,8 @@ pub trait ICoreWebView2FrameInfoCollectionIterator: IUnknown {
     unsafe fn get_has_current(&self, /* out, retval */ has_current: *mut BOOL) -> HRESULT;
 
     /// Get the current `ICoreWebView2FrameInfo` of the iterator.
+    /// Returns `HRESULT_FROM_WIN32(ERROR_INVALID_INDEX)` if HasCurrent is
+    /// `FALSE`.
     unsafe fn get_current(
         &self,
         /* out, retval */ frame_info: *mut *mut *mut ICoreWebView2FrameInfoVTable,
@@ -5145,77 +8608,1752 @@ pub trait ICoreWebView2FrameInfoCollectionIterator: IUnknown {
 /// Provides a set of properties for a frame in the `ICoreWebView2`.
 #[com_interface("da86b8a1-bdf3-4f11-9955-528cefa59727")]
 pub trait ICoreWebView2FrameInfo: IUnknown {
-    /// The name attribute of the frame, as in `<iframe name="frame-name" ...>`.
-    /// The returned string is empty when the frame has no name attribute.
+    /// The value of iframe's window.name property. The default value equals to
+    /// iframe html tag declaring it, as in `<iframe name="frame-name" ...>`.
+    /// The returned string is empty when the frame has no name attribute and
+    /// no assigned value for window.name.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_name(&self, /* out, retval */ name: *mut LPWSTR) -> HRESULT;
 
     /// The URI of the document in the frame.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
     unsafe fn get_source(&self, /* out, retval */ source: *mut LPWSTR) -> HRESULT;
 }
 
-/// This is the ICoreWebView2Interop interface.
-/// Interop interface for the CoreWebView2 WinRT object to allow WinRT end
-/// developers to be able to use COM interfaces as parameters for some methods.
-#[com_interface("912b34a7-d10b-49c4-af18-7cb7e604e01a")]
-pub trait ICoreWebView2Interop: IUnknown {
-    /// Add the provided host object to script running in the WebView with the
-    /// specified name.
-    /// See the documentation for ICoreWebView2::AddHostObjectToScript for more
-    /// information.
-    unsafe fn add_host_object_to_script(
+/// A continuation of the ICoreWebView2FrameInfo interface that provides
+/// `ParentFrameInfo`, `FrameId` and `FrameKind` properties.
+#[com_interface("56f85cfa-72c4-11ee-b962-0242ac120002")]
+pub trait ICoreWebView2FrameInfo2: ICoreWebView2FrameInfo {
+    /// This parent frame's `FrameInfo`. `ParentFrameInfo` will only be
+    /// populated when obtained via calling
+    /// `CoreWebView2ProcessExtendedInfo.AssociatedFrameInfos`.
+    /// `CoreWebView2FrameInfo` objects obtained via `CoreWebView2.ProcessFailed` will
+    /// always have a `null ParentFrameInfo`. This property is also `null` for the
+    /// main frame in the WebView2 which has no parent frame.
+    /// Note that this `ParentFrameInfo` could be out of date as it's a snapshot.
+    unsafe fn get_parent_frame_info(
         &self,
-        /* in */ name: LPCWSTR,
-        /* in */ object: *mut VARIANT,
+        /* out, retval */ frame_info: *mut *mut *mut ICoreWebView2FrameInfoVTable,
+    ) -> HRESULT;
+
+    /// The unique identifier of the frame associated with the current `FrameInfo`.
+    /// It's the same kind of ID as with the `FrameId` in `CoreWebView2` and via
+    /// `CoreWebView2Frame`. `FrameId` will only be populated (non-zero) when obtained
+    /// calling `CoreWebView2ProcessExtendedInfo.AssociatedFrameInfos`.
+    /// `CoreWebView2FrameInfo` objects obtained via `CoreWebView2.ProcessFailed` will
+    /// always have an invalid frame Id 0.
+    /// Note that this `FrameId` could be out of date as it's a snapshot.
+    /// If there's WebView2 created or destroyed or `FrameCreated/FrameDestroyed` events
+    /// after the asynchronous call `CoreWebView2Environment.GetProcessExtendedInfos`
+    /// starts, you may want to call asynchronous method again to get the updated `FrameInfo`s.
+    unsafe fn get_frame_id(&self, /* out, retval */ id: *mut u32) -> HRESULT;
+
+    /// The frame kind of the frame. `FrameKind` will only be populated when
+    /// obtained calling `CoreWebView2ProcessExtendedInfo.AssociatedFrameInfos`.
+    /// `CoreWebView2FrameInfo` objects obtained via `CoreWebView2.ProcessFailed`
+    /// will always have the default value `COREWEBVIEW2_FRAME_KIND_UNKNOWN`.
+    /// Note that this `FrameKind` could be out of date as it's a snapshot.
+    unsafe fn get_frame_kind(&self, /* out, retval */ kind: *mut FrameKind) -> HRESULT;
+}
+
+/// Represents a Basic HTTP authentication response that contains a user name
+/// and a password as according to RFC7617 (https://tools.ietf.org/html/rfc7617)
+#[com_interface("07023f7d-2d77-4d67-9040-6e7d428c6a40")]
+pub trait ICoreWebView2BasicAuthenticationResponse: IUnknown {
+    /// User name provided for authentication.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_user_name(&self, /* out, retval */ user_name: *mut LPWSTR) -> HRESULT;
+
+    /// Set user name property
+    unsafe fn put_user_name(&self, /* in */ user_name: LPCWSTR) -> HRESULT;
+
+    /// Password provided for authentication.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_password(&self, /* out, retval */ password: *mut LPWSTR) -> HRESULT;
+
+    /// Set password property
+    unsafe fn put_password(&self, /* in */ password: LPCWSTR) -> HRESULT;
+}
+
+/// Event args for the BasicAuthenticationRequested event. Will contain the
+/// request that led to the HTTP authorization challenge, the challenge
+/// and allows the host to provide authentication response or cancel the request.
+#[com_interface("ef05516f-d897-4f9e-b672-d8e2307a3fb0")]
+pub trait ICoreWebView2BasicAuthenticationRequestedEventArgs: IUnknown {
+    /// The URI that led to the authentication challenge. For proxy authentication
+    /// requests, this will be the URI of the proxy server.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_uri(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// The authentication challenge string
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_challenge(&self, /* out, retval */ challenge: *mut LPWSTR) -> HRESULT;
+
+    /// Response to the authentication request with credentials. This object will be populated by the app
+    /// if the host would like to provide authentication credentials.
+    unsafe fn get_response(
+        &self,
+        /* out, retval */
+        response: *mut *mut *mut ICoreWebView2BasicAuthenticationResponseVTable,
+    ) -> HRESULT;
+
+    /// Cancel the authentication request. False by default.
+    /// If set to true, Response will be ignored.
+    unsafe fn get_cancel(&self, /* out, retval */ cancel: *mut BOOL) -> HRESULT;
+
+    /// Set the Cancel property.
+    unsafe fn put_cancel(&self, /* in */ cancel: BOOL) -> HRESULT;
+
+    /// Returns an `ICoreWebView2Deferral` object. Use this deferral to
+    /// defer the decision to show the Basic Authentication dialog.
+    unsafe fn get_deferral(
+        &self,
+        /* out, retval */ deferral: *mut *mut *mut ICoreWebView2DeferralVTable,
     ) -> HRESULT;
 }
 
-/// This is the ICoreWebView2CompositionControllerInterop interface.
-/// Interop interface for the CoreWebView2CompositionController WinRT object to
-/// allow WinRT end developers to be able to use the COM interfaces as parameters
-/// for some methods.
-#[com_interface("8e9922ce-9c80-42e6-bad7-fcebf291a495")]
-pub trait ICoreWebView2CompositionControllerInterop: IUnknown {
-    /// Returns the UI Automation Provider for the WebView.
-    unsafe fn get_uiaprovider(
+/// Implements the interface to receive `IsDocumentPlayingAudioChanged` events.  Use the
+/// IsDocumentPlayingAudio property to get the audio playing state.
+#[com_interface("5DEF109A-2F4B-49FA-B7F6-11C39E513328")]
+pub trait ICoreWebView2IsDocumentPlayingAudioChangedEventHandler: IUnknown {
+    /// Provides the event args for the corresponding event.  No event args exist
+    /// and the `args` parameter is set to `null`.
+    unsafe fn invoke(
         &self,
-        /* out, retval */ provider: *mut *mut *mut IUnknownVTable,
-    ) -> HRESULT;
-
-    /// The RootVisualTarget is a visual in the hosting app's visual tree. This
-    /// visual is where the WebView will connect its visual tree. The app uses
-    /// this visual to position the WebView within the app. The app still needs
-    /// to use the Bounds property to size the WebView. The RootVisualTarget
-    /// property can be an IDCompositionVisual or a
-    /// Windows::UI::Composition::ContainerVisual. WebView will connect its visual
-    /// tree to the provided visual before returning from the property setter. The
-    /// app needs to commit on its device setting the RootVisualTarget property.
-    /// The RootVisualTarget property supports being set to nullptr to disconnect
-    /// the WebView from the app's visual tree.
-    /// \snippet ViewComponent.cpp SetRootVisualTarget
-    /// \snippet ViewComponent.cpp BuildDCompTree
-    unsafe fn get_root_visual_target(
-        &self,
-        /* out, retval */ target: *mut *mut *mut IUnknownVTable,
-    ) -> HRESULT;
-
-    /// Set the RootVisualTarget property.
-    unsafe fn put_root_visual_target(
-        &self,
-        /* in */ target: *mut *mut IUnknownVTable,
+        /* in */ sender: *mut *mut ICoreWebView2VTable,
+        /* in */ args: *mut *mut IUnknownVTable,
     ) -> HRESULT;
 }
 
-/// This is the ICoreWebView2EnvironmentInterop interface.
-/// Interop interface for the CoreWebView2Environment WinRT object to allow
-/// WinRT end developers to be able to use COM interfaces as parameters for some
-/// methods.
-#[com_interface("ee503a63-c1e2-4fbf-8a4d-824e95f8bb13")]
-pub trait ICoreWebView2EnvironmentInterop: IUnknown {
-    /// Returns the UI Automation Provider for the
-    /// ICoreWebView2CompositionController that corresponds with the given HWND.
-    unsafe fn get_provider_for_hwnd(
+/// Implements the interface to receive `IsMutedChanged` events.  Use the
+/// IsMuted property to get the mute state.
+#[com_interface("57D90347-CD0E-4952-A4A2-7483A2756F08")]
+pub trait ICoreWebView2IsMutedChangedEventHandler: IUnknown {
+    /// Provides the event args for the corresponding event.  No event args exist
+    /// and the `args` parameter is set to `null`.
+    unsafe fn invoke(
         &self,
-        /* in */ hwnd: HWND,
-        /* out, retval */ provider: *mut *mut *mut IUnknownVTable,
+        /* in */ sender: *mut *mut ICoreWebView2VTable,
+        /* in */ args: *mut *mut IUnknownVTable,
     ) -> HRESULT;
+}
+
+/// This is an extension of the ICoreWebView2Frame interface that supports PermissionRequested
+#[com_interface("b50d82cc-cc28-481d-9614-cb048895e6a0")]
+pub trait ICoreWebView2Frame3: ICoreWebView2Frame2 {
+    /// Add an event handler for the `PermissionRequested` event.
+    /// `PermissionRequested` is raised when content in an iframe any of its
+    /// descendant iframes requests permission to privileged resources.
+    ///
+    /// This relates to the `PermissionRequested` event on the `CoreWebView2`.
+    /// Both these events will be raised in the case of an iframe requesting
+    /// permission. The `CoreWebView2Frame`'s event handlers will be invoked
+    /// before the event handlers on the `CoreWebView2`. If the `Handled` property
+    /// of the `PermissionRequestedEventArgs` is set to TRUE within the
+    /// `CoreWebView2Frame` event handler, then the event will not be
+    /// raised on the `CoreWebView2`, and it's event handlers will not be invoked.
+    ///
+    /// In the case of nested iframes, the 'PermissionRequested' event will
+    /// be raised from the top level iframe.
+    ///
+    /// If a deferral is not taken on the event args, the subsequent scripts are
+    /// blocked until the event handler returns.  If a deferral is taken, the
+    /// scripts are blocked until the deferral is completed.
+    ///
+    /// \snippet ScenarioIFrameDevicePermission.cpp PermissionRequested0
+    /// \snippet ScenarioIFrameDevicePermission.cpp PermissionRequested1
+    unsafe fn add_permission_requested(
+        &self,
+        /* in */ handler: *mut *mut ICoreWebView2FramePermissionRequestedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with `add_PermissionRequested`
+    unsafe fn remove_permission_requested(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+}
+
+/// This is an extension of the ICoreWebView2Frame interface that supports shared buffer based on file mapping.
+#[com_interface("188782DC-92AA-4732-AB3C-FCC59F6F68B9")]
+pub trait ICoreWebView2Frame4: ICoreWebView2Frame3 {
+    /// Share a shared buffer object with script of the iframe in the WebView.
+    /// The script will receive a `sharedbufferreceived` event from chrome.webview.
+    /// The event arg for that event will have the following methods and properties:
+    ///   `getBuffer()`: return an ArrayBuffer object with the backing content from the shared buffer.
+    ///   `additionalData`: an object as the result of parsing `additionalDataAsJson` as JSON string.
+    ///           This property will be `undefined` if `additionalDataAsJson` is nullptr or empty string.
+    ///   `source`: with a value set as `chrome.webview` object.
+    /// If a string is provided as `additionalDataAsJson` but it is not a valid JSON string,
+    /// the API will fail with `E_INVALIDARG`.
+    /// If `access` is COREWEBVIEW2_SHARED_BUFFER_ACCESS_READ_ONLY, the script will only have read access to the buffer.
+    /// If the script tries to modify the content in a read only buffer, it will cause an access
+    /// violation in WebView renderer process and crash the renderer process.
+    /// If the shared buffer is already closed, the API will fail with `RO_E_CLOSED`.
+    ///
+    /// The script code should call `chrome.webview.releaseBuffer` with
+    /// the shared buffer as the parameter to release underlying resources as soon
+    /// as it does not need access to the shared buffer any more.
+    ///
+    /// The application can post the same shared buffer object to multiple web pages or iframes, or
+    /// post to the same web page or iframe multiple times. Each `PostSharedBufferToScript` will
+    /// create a separate ArrayBuffer object with its own view of the memory and is separately
+    /// released. The underlying shared memory will be released when all the views are released.
+    ///
+    /// For example, if we want to send data to script for one time read only consumption.
+    ///
+    /// \snippet ScenarioSharedBuffer.cpp OneTimeShareBuffer
+    ///
+    /// In the HTML document,
+    ///
+    /// \snippet assets\ScenarioSharedBuffer.html ShareBufferScriptCode_1
+    ///
+    /// \snippet assets\ScenarioSharedBuffer.html ShareBufferScriptCode_2
+    ///
+    /// Sharing a buffer to script has security risk. You should only share buffer with trusted site.
+    /// If a buffer is shared to a untrusted site, possible sensitive information could be leaked.
+    /// If a buffer is shared as modifiable by the script and the script modifies it in an unexpected way,
+    /// it could result in corrupted data that might even crash the application.
+    unsafe fn post_shared_buffer_to_script(
+        &self,
+        /* in */ shared_buffer: *mut *mut ICoreWebView2SharedBufferVTable,
+        /* in */ access: SharedBufferAccess,
+        /* in */ additional_data_as_json: LPCWSTR,
+    ) -> HRESULT;
+}
+
+/// This is an extension of the ICoreWebView2Frame interface that provides the `FrameId` property.
+#[com_interface("99d199c4-7305-11ee-b962-0242ac120002")]
+pub trait ICoreWebView2Frame5: ICoreWebView2Frame4 {
+    /// The unique identifier of the current frame. It's the same kind of ID as
+    /// with the `FrameId` in `CoreWebView2` and via `CoreWebView2FrameInfo`.
+    unsafe fn get_frame_id(&self, /* out, retval */ id: *mut u32) -> HRESULT;
+}
+
+/// Receives `PermissionRequested` events for iframes.
+#[com_interface("845d0edd-8bd8-429b-9915-4821789f23e9")]
+pub trait ICoreWebView2FramePermissionRequestedEventHandler: IUnknown {
+    /// Provides the event args for the corresponding event.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2FrameVTable,
+        /* in */ args: *mut *mut ICoreWebView2PermissionRequestedEventArgs2VTable,
+    ) -> HRESULT;
+}
+
+/// This is a continuation of the `ICoreWebView2PermissionRequestedEventArgs` interface.
+#[com_interface("74d7127f-9de6-4200-8734-42d6fb4ff741")]
+pub trait ICoreWebView2PermissionRequestedEventArgs2:
+    ICoreWebView2PermissionRequestedEventArgs
+{
+    /// By default, both the `PermissionRequested` event handlers on the
+    /// `CoreWebView2Frame` and the `CoreWebView2` will be invoked, with the
+    /// `CoreWebView2Frame` event handlers invoked first. The host may
+    /// set this flag to `TRUE` within the `CoreWebView2Frame` event handlers
+    /// to prevent the remaining `CoreWebView2` event handlers from being invoked.
+    ///
+    /// If a deferral is taken on the event args, then you must synchronously
+    /// set `Handled` to TRUE prior to taking your deferral to prevent the
+    /// `CoreWebView2`s event handlers from being invoked.
+    unsafe fn get_handled(&self, /* out, retval */ handled: *mut BOOL) -> HRESULT;
+
+    /// Sets the `Handled` property.
+    unsafe fn put_handled(&self, /* in */ handled: BOOL) -> HRESULT;
+}
+
+/// Represents a context menu item of a context menu displayed by WebView.
+#[com_interface("7aed49e3-a93f-497a-811c-749c6b6b6c65")]
+pub trait ICoreWebView2ContextMenuItem: IUnknown {
+    /// Gets the unlocalized name for the `ContextMenuItem`. Use this to
+    /// distinguish between context menu item types. This will be the English
+    /// label of the menu item in lower camel case. For example, the "Save as"
+    /// menu item will be "saveAs". Extension menu items will be "extension",
+    /// custom menu items will be "custom" and spellcheck items will be
+    /// "spellCheck".
+    /// Some example context menu item names are:
+    /// - "saveAs"
+    /// - "copyImage"
+    /// - "openLinkInNewWindow"
+    /// - "cut"
+    /// - "copy"
+    /// - "paste"
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_name(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// Gets the localized label for the `ContextMenuItem`. Will contain an
+    /// ampersand for characters to be used as keyboard accelerator.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_label(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// Gets the Command ID for the `ContextMenuItem`. Use this to report the
+    /// `SelectedCommandId` in `ContextMenuRequested` event.
+    unsafe fn get_command_id(&self, /* out, retval */ value: *mut i32) -> HRESULT;
+
+    /// Gets the localized keyboard shortcut for this ContextMenuItem. It will be
+    /// the empty string if there is no keyboard shortcut. This is text intended
+    /// to be displayed to the end user to show the keyboard shortcut. For example
+    /// this property is Ctrl+Shift+I for the "Inspect" `ContextMenuItem`.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_shortcut_key_description(
+        &self,
+        /* out, retval */ value: *mut LPWSTR,
+    ) -> HRESULT;
+
+    /// Gets the Icon for the `ContextMenuItem` in PNG, Bitmap or SVG formats in the form of an IStream.
+    /// Stream will be rewound to the start of the image data.
+    unsafe fn get_icon(
+        &self,
+        /* out, retval */ value: *mut *mut *mut IStreamVTable,
+    ) -> HRESULT;
+
+    /// Gets the `ContextMenuItem` kind.
+    unsafe fn get_kind(&self, /* out, retval */ value: *mut ContextMenuItemKind) -> HRESULT;
+
+    /// Sets the enabled property of the `ContextMenuItem`. Must only be used in the case of a
+    /// custom context menu item. The default value for this is `TRUE`.
+    unsafe fn put_is_enabled(&self, /* in */ value: BOOL) -> HRESULT;
+
+    /// Gets the enabled property of the `ContextMenuItem`.
+    unsafe fn get_is_enabled(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
+
+    /// Sets the checked property of the `ContextMenuItem`. Must only be used for custom context
+    /// menu items that are of kind Check box or Radio.
+    unsafe fn put_is_checked(&self, /* in */ value: BOOL) -> HRESULT;
+
+    /// Gets the checked property of the `ContextMenuItem`, used if the kind is Check box or Radio.
+    unsafe fn get_is_checked(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
+
+    /// Gets the list of children menu items through a `ContextMenuItemCollection`
+    /// if the kind is Submenu. If the kind is not submenu, will return null.
+    unsafe fn get_children(
+        &self,
+        /* out, retval */ value: *mut *mut *mut ICoreWebView2ContextMenuItemCollectionVTable,
+    ) -> HRESULT;
+
+    /// Add an event handler for the `CustomItemSelected` event.
+    /// `CustomItemSelected` event is raised when the user selects this `ContextMenuItem`.
+    /// Will only be raised for end developer created context menu items
+    unsafe fn add_custom_item_selected(
+        &self,
+        /* in */ event_handler: *mut *mut ICoreWebView2CustomItemSelectedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Remove an event handler previously added with `add_CustomItemSelected`.
+    unsafe fn remove_custom_item_selected(
+        &self,
+        /* in */ token: EventRegistrationToken,
+    ) -> HRESULT;
+}
+
+/// Represents a collection of `ContextMenuItem` objects. Used to get, remove and add
+/// `ContextMenuItem` objects at the specified index.
+#[com_interface("f562a2f5-c415-45cf-b909-d4b7c1e276d3")]
+pub trait ICoreWebView2ContextMenuItemCollection: IUnknown {
+    /// Gets the number of `ContextMenuItem` objects contained in the `ContextMenuItemCollection`.
+    unsafe fn get_count(&self, /* out, retval */ value: *mut u32) -> HRESULT;
+
+    /// Gets the `ContextMenuItem` at the specified index.
+    unsafe fn get_value_at_index(
+        &self,
+        /* in */ index: u32,
+        /* out, retval */ value: *mut *mut *mut ICoreWebView2ContextMenuItemVTable,
+    ) -> HRESULT;
+
+    /// Removes the `ContextMenuItem` at the specified index.
+    unsafe fn remove_value_at_index(&self, /* in */ index: u32) -> HRESULT;
+
+    /// Inserts the `ContextMenuItem` at the specified index.
+    unsafe fn insert_value_at_index(
+        &self,
+        /* in */ index: u32,
+        /* in */ value: *mut *mut ICoreWebView2ContextMenuItemVTable,
+    ) -> HRESULT;
+}
+
+/// Receives `ContextMenuRequested` events.
+#[com_interface("04d3fe1d-ab87-42fb-a898-da241d35b63c")]
+pub trait ICoreWebView2ContextMenuRequestedEventHandler: IUnknown {
+    /// Called to provide the event args when a context menu is requested on a
+    /// WebView element.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2VTable,
+        /* in */ args: *mut *mut ICoreWebView2ContextMenuRequestedEventArgsVTable,
+    ) -> HRESULT;
+}
+
+/// Raised to notify the host that the end user selected a custom
+/// `ContextMenuItem`. `CustomItemSelected` event is raised on the specific
+/// `ContextMenuItem` that the end user selected.
+#[com_interface("49e1d0bc-fe9e-4481-b7c2-32324aa21998")]
+pub trait ICoreWebView2CustomItemSelectedEventHandler: IUnknown {
+    /// Provides the event args for the corresponding event. No event args exist
+    /// and the `args` parameter is set to `null`.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2ContextMenuItemVTable,
+        /* in */ args: *mut *mut IUnknownVTable,
+    ) -> HRESULT;
+}
+
+/// Represents the information regarding the context menu target.
+/// Includes the context selected and the appropriate data used for the actions of a context menu.
+#[com_interface("b8611d99-eed6-4f3f-902c-a198502ad472")]
+pub trait ICoreWebView2ContextMenuTarget: IUnknown {
+    /// Gets the kind of context that the user selected.
+    unsafe fn get_kind(&self, /* out, retval */ value: *mut ContextMenuTargetKind) -> HRESULT;
+
+    /// Returns TRUE if the context menu is requested on an editable component.
+    unsafe fn get_is_editable(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
+
+    /// Returns TRUE if the context menu was requested on the main frame and
+    /// FALSE if invoked on another frame.
+    unsafe fn get_is_requested_for_main_frame(
+        &self,
+        /* out, retval */ value: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Gets the uri of the page.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_page_uri(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// Gets the uri of the frame. Will match the PageUri if `IsRequestedForMainFrame` is TRUE.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_frame_uri(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// Returns TRUE if the context menu is requested on HTML containing an anchor tag.
+    unsafe fn get_has_link_uri(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
+
+    /// Gets the uri of the link (if `HasLinkUri` is TRUE, null otherwise).
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_link_uri(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// Returns TRUE if the context menu is requested on text element that contains an anchor tag.
+    unsafe fn get_has_link_text(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
+
+    /// Gets the text of the link (if `HasLinkText` is TRUE, null otherwise).
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_link_text(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// Returns TRUE if the context menu is requested on HTML containing a source uri.
+    unsafe fn get_has_source_uri(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
+
+    /// Gets the active source uri of element (if `HasSourceUri` is TRUE, null otherwise).
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_source_uri(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// Returns TRUE if the context menu is requested on a selection.
+    unsafe fn get_has_selection(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
+
+    /// Gets the selected text (if `HasSelection` is TRUE, null otherwise).
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_selection_text(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+}
+
+/// Event args for the `ContextMenuRequested` event. Will contain the selection information
+/// and a collection of all of the default context menu items that the WebView
+/// would show. Allows the app to draw its own context menu or add/remove
+/// from the default context menu.
+#[com_interface("a1d309ee-c03f-11eb-8529-0242ac130003")]
+pub trait ICoreWebView2ContextMenuRequestedEventArgs: IUnknown {
+    /// Gets the collection of `ContextMenuItem` objects.
+    /// See `ICoreWebView2ContextMenuItemCollection` for more details.
+    unsafe fn get_menu_items(
+        &self,
+        /* out, retval */ value: *mut *mut *mut ICoreWebView2ContextMenuItemCollectionVTable,
+    ) -> HRESULT;
+
+    /// Gets the target information associated with the requested context menu.
+    /// See `ICoreWebView2ContextMenuTarget` for more details.
+    unsafe fn get_context_menu_target(
+        &self,
+        /* out, retval */ value: *mut *mut *mut ICoreWebView2ContextMenuTargetVTable,
+    ) -> HRESULT;
+
+    /// Gets the coordinates where the context menu request occurred in relation to the upper
+    /// left corner of the WebView bounds.
+    unsafe fn get_location(&self, /* out, retval */ value: *mut POINT) -> HRESULT;
+
+    /// Sets the selected context menu item's command ID. When this is set,
+    /// WebView will execute the selected command. This
+    /// value should always be obtained via the selected `ContextMenuItem`'s `CommandId` property.
+    /// The default value is -1 which means that no selection occurred. The app can
+    /// also report the selected command ID for a custom context menu item, which
+    /// will cause the `CustomItemSelected` event to be fired for the custom item, however
+    /// while command IDs for each custom context menu item is unique
+    /// during a ContextMenuRequested event, CoreWebView2 may reassign command ID
+    /// values of deleted custom ContextMenuItems to new objects and the command
+    /// ID assigned to the same custom item can be different between each app runtime.
+    unsafe fn put_selected_command_id(&self, /* in */ value: i32) -> HRESULT;
+
+    /// Gets the selected CommandId.
+    unsafe fn get_selected_command_id(&self, /* out, retval */ value: *mut i32) -> HRESULT;
+
+    /// Sets whether the `ContextMenuRequested` event is handled by host after
+    /// the event handler completes or if there is a deferral then after the deferral is completed.
+    /// If `Handled` is set to TRUE then WebView will not display a context menu and will instead
+    /// use the `SelectedCommandId` property to indicate which, if any, context menu item command to invoke.
+    /// If after the event handler or deferral completes `Handled` is set to FALSE then WebView
+    /// will display a context menu based on the contents of the `MenuItems` property.
+    /// The default value is FALSE.
+    unsafe fn put_handled(&self, /* in */ value: BOOL) -> HRESULT;
+
+    /// Gets whether the `ContextMenuRequested` event is handled by host.
+    unsafe fn get_handled(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
+
+    /// Returns an `ICoreWebView2Deferral` object. Use this operation to
+    /// complete the event when the custom context menu is closed.
+    unsafe fn get_deferral(
+        &self,
+        /* out, retval */ deferral: *mut *mut *mut ICoreWebView2DeferralVTable,
+    ) -> HRESULT;
+}
+
+/// This interface is used to manage profile options that created by 'CreateCoreWebView2ControllerOptions'.
+///
+/// \snippet AppWindow.cpp CreateControllerWithOptions
+#[com_interface("12aae616-8ccb-44ec-bcb3-eb1831881635")]
+pub trait ICoreWebView2ControllerOptions: IUnknown {
+    /// `ProfileName` property is to specify a profile name, which is only allowed to contain
+    /// the following ASCII characters. It has a maximum length of 64 characters excluding the null-terminator.
+    /// It is ASCII case insensitive.
+    ///
+    /// * alphabet characters: a-z and A-Z
+    /// * digit characters: 0-9
+    /// * and '#', '@', '$', '(', ')', '+', '-', '_', '~', '.', ' ' (space).
+    ///
+    /// Note: the text must not end with a period '.' or ' ' (space). And, although upper-case letters are
+    /// allowed, they're treated just as lower-case counterparts because the profile name will be mapped to
+    /// the real profile directory path on disk and Windows file system handles path names in a case-insensitive way.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_profile_name(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// Sets the `ProfileName` property.
+    unsafe fn put_profile_name(&self, /* in */ value: LPCWSTR) -> HRESULT;
+
+    /// `IsInPrivateModeEnabled` property is to enable/disable InPrivate mode.
+    unsafe fn get_is_in_private_mode_enabled(
+        &self,
+        /* out, retval */ value: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Sets the `IsInPrivateModeEnabled` property.
+    unsafe fn put_is_in_private_mode_enabled(&self, /* in */ value: BOOL) -> HRESULT;
+}
+
+/// Provides a set of properties to configure a Profile object.
+///
+/// \snippet AppWindow.cpp OnCreateCoreWebView2ControllerCompleted
+#[com_interface("79110ad3-cd5d-4373-8bc3-c60658f17a5f")]
+pub trait ICoreWebView2Profile: IUnknown {
+    /// Name of the profile.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_profile_name(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// InPrivate mode is enabled or not.
+    unsafe fn get_is_in_private_mode_enabled(
+        &self,
+        /* out, retval */ value: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Full path of the profile directory.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_profile_path(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// Gets the `DefaultDownloadFolderPath` property. The default value is the
+    /// system default download folder path for the user.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_default_download_folder_path(
+        &self,
+        /* out, retval */ value: *mut LPWSTR,
+    ) -> HRESULT;
+
+    /// Sets the `DefaultDownloadFolderPath` property. The default download folder
+    /// path is persisted in the user data folder across sessions. The value
+    /// should be an absolute path to a folder that the user and application can
+    /// write to. Returns `E_INVALIDARG` if the value is invalid, and the default
+    /// download folder path is not changed. Otherwise the path is changed
+    /// immediately. If the directory does not yet exist, it is created at the
+    /// time of the next download. If the host application does not have
+    /// permission to create the directory, then the user is prompted to provide a
+    /// new path through the Save As dialog. The user can override the default
+    /// download folder path for a given download by choosing a different path in
+    /// the Save As dialog.
+    unsafe fn put_default_download_folder_path(&self, /* in */ value: LPCWSTR) -> HRESULT;
+
+    /// The PreferredColorScheme property sets the overall color scheme of the
+    /// WebView2s associated with this profile. This sets the color scheme for
+    /// WebView2 UI like dialogs, prompts, and context menus by setting the
+    /// media feature `prefers-color-scheme` for websites to respond to.
+    ///
+    /// The default value for this is COREWEBVIEW2_PREFERRED_COLOR_AUTO,
+    /// which will follow whatever theme the OS is currently set to.
+    ///
+    /// \snippet ViewComponent.cpp SetPreferredColorScheme
+    /// Returns the value of the `PreferredColorScheme` property.
+    unsafe fn get_preferred_color_scheme(
+        &self,
+        /* out, retval */ value: *mut PreferredColorScheme,
+    ) -> HRESULT;
+
+    /// Sets the `PreferredColorScheme` property.
+    unsafe fn put_preferred_color_scheme(
+        &self,
+        /* in */ value: PreferredColorScheme,
+    ) -> HRESULT;
+}
+
+/// Provides access to the certificate metadata.
+#[com_interface("C5FB2FCE-1CAC-4AEE-9C79-5ED0362EAAE0")]
+pub trait ICoreWebView2Certificate: IUnknown {
+    /// Subject of the certificate.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`. See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_subject(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// Name of the certificate authority that issued the certificate.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`. See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_issuer(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// The valid start date and time for the certificate as the number of seconds since
+    /// the UNIX epoch.
+    unsafe fn get_valid_from(&self, /* out, retval */ value: *mut f64) -> HRESULT;
+
+    /// The valid expiration date and time for the certificate as the number of seconds since
+    /// the UNIX epoch.
+    unsafe fn get_valid_to(&self, /* out, retval */ value: *mut f64) -> HRESULT;
+
+    /// Base64 encoding of DER encoded serial number of the certificate.
+    /// Read more about DER at [RFC 7468 DER]
+    /// (https://tools.ietf.org/html/rfc7468#appendix-B).
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`. See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_der_encoded_serial_number(
+        &self,
+        /* out, retval */ value: *mut LPWSTR,
+    ) -> HRESULT;
+
+    /// Display name for a certificate.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`. See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings)
+    unsafe fn get_display_name(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// PEM encoded data for the certificate.
+    /// Returns Base64 encoding of DER encoded certificate.
+    /// Read more about PEM at [RFC 1421 Privacy Enhanced Mail]
+    /// (https://tools.ietf.org/html/rfc1421).
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`. See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings)
+    unsafe fn to_pem_encoding(
+        &self,
+        /* out, retval */ pem_encoded_data: *mut LPWSTR,
+    ) -> HRESULT;
+
+    /// Collection of PEM encoded certificate issuer chain.
+    /// In this collection first element is the current certificate followed by
+    /// intermediate1, intermediate2...intermediateN-1. Root certificate is the
+    /// last element in collection.
+    unsafe fn get_pem_encoded_issuer_certificate_chain(
+        &self,
+        /* out, retval */ value: *mut *mut *mut ICoreWebView2StringCollectionVTable,
+    ) -> HRESULT;
+}
+
+/// An event handler for the `ServerCertificateErrorDetected` event.
+#[com_interface("969B3A26-D85E-4795-8199-FEF57344DA22")]
+pub trait ICoreWebView2ServerCertificateErrorDetectedEventHandler: IUnknown {
+    /// Provides the event args for the corresponding event.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2VTable,
+        /* in */ args: *mut *mut ICoreWebView2ServerCertificateErrorDetectedEventArgsVTable,
+    ) -> HRESULT;
+}
+
+/// Event args for the `ServerCertificateErrorDetected` event.
+#[com_interface("012193ED-7C13-48FF-969D-A84C1F432A14")]
+pub trait ICoreWebView2ServerCertificateErrorDetectedEventArgs: IUnknown {
+    /// The TLS error code for the invalid certificate.
+    unsafe fn get_error_status(&self, /* out, retval */ value: *mut WebErrorStatus) -> HRESULT;
+
+    /// URI associated with the request for the invalid certificate.
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_request_uri(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// Returns the server certificate.
+    unsafe fn get_server_certificate(
+        &self,
+        /* out, retval */ value: *mut *mut *mut ICoreWebView2CertificateVTable,
+    ) -> HRESULT;
+
+    /// The action of the server certificate error detection.
+    /// The default value is `COREWEBVIEW2_SERVER_CERTIFICATE_ERROR_ACTION_DEFAULT`.
+    unsafe fn get_action(
+        &self,
+        /* out, retval */ value: *mut ServerCertificateErrorAction,
+    ) -> HRESULT;
+
+    /// Sets the `Action` property.
+    unsafe fn put_action(&self, /* in */ value: ServerCertificateErrorAction) -> HRESULT;
+
+    /// Returns an `ICoreWebView2Deferral` object. Use this operation to
+    /// complete the event at a later time.
+    unsafe fn get_deferral(
+        &self,
+        /* out, retval */ deferral: *mut *mut *mut ICoreWebView2DeferralVTable,
+    ) -> HRESULT;
+}
+
+/// Receives the result of the `ClearServerCertificateErrorActions` method.
+#[com_interface("3B40AAC6-ACFE-4FFD-8211-F607B96E2D5B")]
+pub trait ICoreWebView2ClearServerCertificateErrorActionsCompletedHandler: IUnknown {
+    /// Provides the result of the corresponding asynchronous method.
+    unsafe fn invoke(&self, /* in */ error_code: HRESULT) -> HRESULT;
+}
+
+/// Profile2 interface.
+///
+#[com_interface("fa740d4b-5eae-4344-a8ad-74be31925397")]
+pub trait ICoreWebView2Profile2: ICoreWebView2Profile {
+    /// Clear browsing data based on a data type. This method takes two parameters,
+    /// the first being a mask of one or more `COREWEBVIEW2_BROWSING_DATA_KINDS`. OR
+    /// operation(s) can be applied to multiple `COREWEBVIEW2_BROWSING_DATA_KINDS` to
+    /// create a mask representing those data types. The browsing data kinds that are
+    /// supported are listed below. These data kinds follow a hierarchical structure in
+    /// which nested bullet points are included in their parent bullet point's data kind.
+    /// Ex: All DOM storage is encompassed in all site data which is encompassed in
+    /// all profile data.
+    /// * All Profile
+    ///   * All Site Data
+    ///     * All DOM Storage: File Systems, Indexed DB, Local Storage, Web SQL, Cache
+    ///         Storage
+    ///     * Cookies
+    ///   * Disk Cache
+    ///   * Download History
+    ///   * General Autofill
+    ///   * Password Autosave
+    ///   * Browsing History
+    ///   * Settings
+    /// The completed handler will be invoked when the browsing data has been cleared and
+    /// will indicate if the specified data was properly cleared. In the case in which
+    /// the operation is interrupted and the corresponding data is not fully cleared
+    /// the handler will return `E_ABORT` and otherwise will return `S_OK`.
+    /// Because this is an asynchronous operation, code that is dependent on the cleared
+    /// data must be placed in the callback of this operation.
+    /// If the WebView object is closed before the clear browsing data operation
+    /// has completed, the handler will be released, but not invoked. In this case
+    /// the clear browsing data operation may or may not be completed.
+    /// ClearBrowsingData clears the `dataKinds` regardless of timestamp.
+    unsafe fn clear_browsing_data(
+        &self,
+        /* in */ data_kinds: BrowsingDataKinds,
+        /* in */ handler: *mut *mut ICoreWebView2ClearBrowsingDataCompletedHandlerVTable,
+    ) -> HRESULT;
+
+    /// ClearBrowsingDataInTimeRange behaves like ClearBrowsingData except that it
+    /// takes in two additional parameters for the start and end time for which it
+    /// should clear the data between.  The `startTime` and `endTime`
+    /// parameters correspond to the number of seconds since the UNIX epoch.
+    /// `startTime` is inclusive while `endTime` is exclusive, therefore the data will
+    /// be cleared between [startTime, endTime).
+    unsafe fn clear_browsing_data_in_time_range(
+        &self,
+        /* in */ data_kinds: BrowsingDataKinds,
+        /* in */ start_time: f64,
+        /* in */ end_time: f64,
+        /* in */ handler: *mut *mut ICoreWebView2ClearBrowsingDataCompletedHandlerVTable,
+    ) -> HRESULT;
+
+    /// ClearBrowsingDataAll behaves like ClearBrowsingData except that it
+    /// clears the entirety of the data associated with the profile it is called on.
+    /// It clears the data regardless of timestamp.
+    ///
+    /// \snippet AppWindow.cpp ClearBrowsingData
+    unsafe fn clear_browsing_data_all(
+        &self,
+        /* in */ handler: *mut *mut ICoreWebView2ClearBrowsingDataCompletedHandlerVTable,
+    ) -> HRESULT;
+}
+
+/// The caller implements this interface to receive the ClearBrowsingData result.
+#[com_interface("e9710a06-1d1d-49b2-8234-226f35846ae5")]
+pub trait ICoreWebView2ClearBrowsingDataCompletedHandler: IUnknown {
+    /// Provide the completion status of the corresponding asynchronous method.
+    unsafe fn invoke(&self, /* in */ error_code: HRESULT) -> HRESULT;
+}
+
+/// This is an extension of the ICoreWebView2Profile interface to control levels of tracking prevention.
+#[com_interface("B188E659-5685-4E05-BDBA-FC640E0F1992")]
+pub trait ICoreWebView2Profile3: ICoreWebView2Profile2 {
+    /// The `PreferredTrackingPreventionLevel` property allows you to control levels of tracking prevention for WebView2
+    /// which are associated with a profile. This level would apply to the context of the profile. That is, all WebView2s
+    /// sharing the same profile will be affected and also the value is persisted in the user data folder.
+    ///
+    /// See `COREWEBVIEW2_TRACKING_PREVENTION_LEVEL` for descriptions of levels.
+    ///
+    /// If tracking prevention feature is enabled when creating the WebView2 environment, you can also disable tracking
+    /// prevention later using this property and `COREWEBVIEW2_TRACKING_PREVENTION_LEVEL_NONE` value but that doesn't
+    /// improves runtime performance.
+    ///
+    /// There is `ICoreWebView2EnvironmentOptions5::EnableTrackingPrevention` property to enable/disable tracking prevention feature
+    /// for all the WebView2's created in the same environment. If enabled, `PreferredTrackingPreventionLevel` is set to
+    /// `COREWEBVIEW2_TRACKING_PREVENTION_LEVEL_BALANCED` by default for all the WebView2's and profiles created in the same
+    /// environment or is set to the level whatever value was last changed/persisted to the profile. If disabled
+    /// `PreferredTrackingPreventionLevel` is not respected by WebView2. If `PreferredTrackingPreventionLevel` is set when the
+    /// feature is disabled, the property value get changed and persisted but it will takes effect only if
+    /// `ICoreWebView2EnvironmentOptions5::EnableTrackingPrevention` is true.
+    ///
+    /// See `ICoreWebView2EnvironmentOptions5::EnableTrackingPrevention` for more details.
+    /// \snippet SettingsComponent.cpp SetTrackingPreventionLevel
+    unsafe fn get_preferred_tracking_prevention_level(
+        &self,
+        /* out, retval */ value: *mut TrackingPreventionLevel,
+    ) -> HRESULT;
+
+    /// Set the `PreferredTrackingPreventionLevel` property.
+    ///
+    /// If `ICoreWebView2EnvironmentOptions5::EnableTrackingPrevention` is false, this property will be changed and persisted
+    /// to the profile but the WebView2 ignores the level silently.
+    unsafe fn put_preferred_tracking_prevention_level(
+        &self,
+        /* in */ value: TrackingPreventionLevel,
+    ) -> HRESULT;
+}
+
+/// This interface is a handler for when the `Favicon` is changed.
+/// The sender is the ICoreWebView2 object the top-level document of
+/// which has changed favicon and the eventArgs is nullptr. Use the
+/// FaviconUri property and GetFavicon method to obtain the favicon
+/// data. The second argument is always null.
+/// For more information see `add_FaviconChanged`.
+#[com_interface("2913DA94-833D-4DE0-8DCA-900FC524A1A4")]
+pub trait ICoreWebView2FaviconChangedEventHandler: IUnknown {
+    /// Called to notify the favicon changed. The event args are always null.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2VTable,
+        /* in */ args: *mut *mut IUnknownVTable,
+    ) -> HRESULT;
+}
+
+/// This interface is a handler for the completion of the population of
+/// `imageStream`.
+/// `errorCode` returns S_OK if the API succeeded.
+/// The image is returned in the `faviconStream` object. If there is no image
+/// then no data would be copied into the imageStream.
+/// For more details, see the `GetFavicon` API.
+#[com_interface("A2508329-7DA8-49D7-8C05-FA125E4AEE8D")]
+pub trait ICoreWebView2GetFaviconCompletedHandler: IUnknown {
+    /// Called to notify the favicon has been retrieved.
+    unsafe fn invoke(
+        &self,
+        /* in */ error_code: HRESULT,
+        /* in */ favicon_stream: *mut *mut IStreamVTable,
+    ) -> HRESULT;
+}
+
+/// Represents the registration of a custom scheme with the
+/// CoreWebView2Environment.
+/// This allows the WebView2 app to be able to handle WebResourceRequested
+/// event for requests with the specified scheme and be able to navigate the
+/// WebView2 to the custom scheme. Once the environment is created, the
+/// registrations are valid and immutable throughout the lifetime of the
+/// associated WebView2s' browser process and any WebView2 environments
+/// sharing the browser process must be created with identical custom scheme
+/// registrations, otherwise the environment creation will fail.
+/// Any further attempts to register the same scheme will fail during environment creation.
+/// The URIs of registered custom schemes will be treated similar to http
+/// URIs for their origins.
+/// They will have tuple origins for URIs with host and opaque origins for
+/// URIs without host as specified in
+/// [7.5 Origin - HTML Living Standard](https://html.spec.whatwg.org/multipage/origin.html)
+///
+/// Example:
+/// `custom-scheme-with-host://hostname/path/to/resource` has origin of
+/// `custom-scheme-with-host://hostname`.
+/// `custom-scheme-without-host:path/to/resource` has origin of
+/// `custom-scheme-without-host:path/to/resource`.
+/// For WebResourceRequested event, the cases of request URIs and filter URIs
+/// with custom schemes will be normalized according to generic URI syntax
+/// rules. Any non-ASCII characters will be preserved.
+/// The registered custom schemes also participate in
+/// [CORS](https://developer.mozilla.org/docs/Web/HTTP/CORS) and
+/// adheres to [CSP](https://developer.mozilla.org/docs/Web/HTTP/CSP).
+/// The app needs to set the appropriate access headers in its
+/// WebResourceRequested event handler to allow CORS requests.
+/// \snippet AppWindow.cpp CoreWebView2CustomSchemeRegistration
+#[com_interface("d60ac92c-37a6-4b26-a39e-95cfe59047bb")]
+pub trait ICoreWebView2CustomSchemeRegistration: IUnknown {
+    /// The name of the custom scheme to register.
+    unsafe fn get_scheme_name(&self, /* out, retval */ scheme_name: *mut LPWSTR) -> HRESULT;
+
+    /// Whether the sites with this scheme will be treated as a
+    /// [Secure Context](https://developer.mozilla.org/docs/Web/Security/Secure_Contexts)
+    /// like an HTTPS site. This flag is only effective when HasAuthorityComponent
+    /// is also set to `true`.
+    /// `false` by default.
+    unsafe fn get_treat_as_secure(
+        &self,
+        /* out, retval */ treat_as_secure: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Set if the scheme will be treated as a Secure Context.
+    unsafe fn put_treat_as_secure(&self, /* in */ value: BOOL) -> HRESULT;
+
+    /// List of origins that are allowed to issue requests with the custom
+    /// scheme, such as XHRs and subresource requests that have an Origin header.
+    /// The origin of any request (requests that have the
+    /// [Origin header](https://developer.mozilla.org/docs/Web/HTTP/Headers/Origin))
+    /// to the custom scheme URI needs to be in this list. No-origin requests
+    /// are requests that do not have an Origin header, such as link
+    /// navigations, embedded images and are always allowed.
+    /// Note: POST requests always contain an Origin header, therefore
+    /// AllowedOrigins must be set for even for same origin POST requests.
+    /// Note that cross-origin restrictions still apply.
+    /// From any opaque origin (Origin header is null), no cross-origin requests
+    /// are allowed.
+    /// If the list is empty, no cross-origin request to this scheme is
+    /// allowed.
+    /// Origins are specified as a string in the format of
+    /// scheme://host:port.
+    /// The origins are string pattern matched with `*` (matches 0 or more
+    /// characters) and `?` (matches 0 or 1 character) wildcards just like
+    /// the URI matching in the
+    /// [AddWebResourceRequestedFilter API](/dotnet/api/microsoft.web.webview2.core.corewebview2.addwebresourcerequestedfilter).
+    /// For example, "http://*.example.com:80".
+    /// Here's a set of examples of what is allowed and not:
+    ///
+    /// | Request URI | Originating URL | AllowedOrigins | Allowed |
+    /// | -- | -- | -- | -- |
+    /// | `custom-scheme:request` | `https://www.example.com` | {"https://www.example.com"} | Yes |
+    /// | `custom-scheme:request` | `https://www.example.com` | {"https://*.example.com"} | Yes |
+    /// | `custom-scheme:request` | `https://www.example.com` | {"https://www.example2.com"} | No |
+    /// | `custom-scheme-with-authority://host/path` | `custom-scheme-with-authority://host2` | {""} | No |
+    /// | `custom-scheme-with-authority://host/path` | `custom-scheme-with-authority2://host` | {"custom-scheme-with-authority2://*"} | Yes |
+    /// | `custom-scheme-without-authority:path` | custom-scheme-without-authority:path2 | {"custom-scheme-without-authority:*"} | No |
+    /// | `custom-scheme-without-authority:path` | custom-scheme-without-authority:path2 | {"*"} | Yes |
+    ///
+    /// The returned strings and the array itself must be deallocated with
+    /// CoTaskMemFree.
+    unsafe fn get_allowed_origins(
+        &self,
+        /* out */ allowed_origins_count: *mut u32,
+        /* out */ allowed_origins: *mut *mut LPWSTR,
+    ) -> HRESULT;
+
+    /// Set the array of origins that are allowed to use the scheme.
+    unsafe fn set_allowed_origins(
+        &self,
+        /* in */ allowed_origins_count: u32,
+        /* in */ allowed_origins: *mut LPCWSTR,
+    ) -> HRESULT;
+
+    /// Set this property to `true` if the URIs with this custom
+    /// scheme will have an authority component (a host for custom schemes).
+    /// Specifically, if you have a URI of the following form you should set the
+    /// `HasAuthorityComponent` value as listed.
+    ///
+    /// | URI | Recommended HasAuthorityComponent value |
+    /// | -- | -- |
+    /// | `custom-scheme-with-authority://host/path` | `true` |
+    /// | `custom-scheme-without-authority:path` | `false` |
+    ///
+    /// When this property is set to `true`, the URIs with this scheme will be
+    /// interpreted as having a
+    /// [scheme and host](https://html.spec.whatwg.org/multipage/origin.html#concept-origin-tuple)
+    /// origin similar to an http URI. Note that the port and user
+    /// information are never included in the computation of origins for
+    /// custom schemes.
+    /// If this property is set to `false`, URIs with this scheme will have an
+    /// [opaque origin](https://html.spec.whatwg.org/multipage/origin.html#concept-origin-opaque)
+    /// similar to a data URI.
+    /// This property is `false` by default.
+    ///
+    /// Note: For custom schemes registered as having authority component,
+    /// navigations to URIs without authority of such custom schemes will fail.
+    /// However, if the content inside WebView2 references
+    /// a subresource with a URI that does not have
+    /// an authority component, but of a custom scheme that is registered as
+    /// having authority component, the URI will be interpreted as a relative path
+    /// as specified in [RFC3986](https://www.rfc-editor.org/rfc/rfc3986).
+    /// For example, `custom-scheme-with-authority:path` will be interpreted
+    /// as `custom-scheme-with-authority://host/path`.
+    /// However, this behavior cannot be guaranteed to remain in future
+    /// releases so it is recommended not to rely on this behavior.
+    unsafe fn get_has_authority_component(
+        &self,
+        /* out, retval */ has_authority_component: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Get has authority component.
+    unsafe fn put_has_authority_component(
+        &self,
+        /* in */ has_authority_component: BOOL,
+    ) -> HRESULT;
+}
+
+/// This is a continuation of the `ICoreWebView2PermissionRequestedEventArgs2`
+/// interface.
+#[com_interface("e61670bc-3dce-4177-86d2-c629ae3cb6ac")]
+pub trait ICoreWebView2PermissionRequestedEventArgs3:
+    ICoreWebView2PermissionRequestedEventArgs2
+{
+    /// The permission state set from the `PermissionRequested` event is saved in
+    /// the profile by default; it persists across sessions and becomes the new
+    /// default behavior for future `PermissionRequested` events. Browser
+    /// heuristics can affect whether the event continues to be raised when the
+    /// state is saved in the profile. Set the `SavesInProfile` property to
+    /// `FALSE` to not persist the state beyond the current request, and to
+    /// continue to receive `PermissionRequested`
+    /// events for this origin and permission kind.
+    unsafe fn get_saves_in_profile(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
+
+    /// Sets the `SavesInProfile` property.
+    unsafe fn put_saves_in_profile(&self, /* in */ value: BOOL) -> HRESULT;
+}
+
+/// The caller implements this interface to handle the result of
+/// `SetPermissionState`.
+#[com_interface("fc77fb30-9c9e-4076-b8c7-7644a703ca1b")]
+pub trait ICoreWebView2SetPermissionStateCompletedHandler: IUnknown {
+    /// Provide the completion status of the corresponding asynchronous method.
+    unsafe fn invoke(&self, /* in */ error_code: HRESULT) -> HRESULT;
+}
+
+/// The caller implements this interface to handle the result of
+/// `GetNonDefaultPermissionSettings`.
+#[com_interface("38274481-a15c-4563-94cf-990edc9aeb95")]
+pub trait ICoreWebView2GetNonDefaultPermissionSettingsCompletedHandler: IUnknown {
+    /// Provides the permission setting collection for the requested permission kind.
+    unsafe fn invoke(
+        &self,
+        /* in */ error_code: HRESULT,
+        /* in */
+        collection_view: *mut *mut ICoreWebView2PermissionSettingCollectionViewVTable,
+    ) -> HRESULT;
+}
+
+/// This is the ICoreWebView2Profile interface for the permission management APIs.
+#[com_interface("8F4ae680-192e-4eC8-833a-21cfadaef628")]
+pub trait ICoreWebView2Profile4: ICoreWebView2Profile3 {
+    /// Sets permission state for the given permission kind and origin
+    /// asynchronously. The change persists across sessions until it is changed by
+    /// another call to `SetPermissionState`, or by setting the `State` property
+    /// in `PermissionRequestedEventArgs`. Setting the state to
+    /// `COREWEBVIEW2_PERMISSION_STATE_DEFAULT` will erase any state saved in the
+    /// profile and restore the default behavior.
+    /// The origin should have a valid scheme and host (e.g. "https://www.example.com"),
+    /// otherwise the method fails with `E_INVALIDARG`. Additional URI parts like
+    /// path and fragment are ignored. For example, "https://wwww.example.com/app1/index.html/"
+    /// is treated the same as "https://wwww.example.com". See the
+    /// [MDN origin definition](https://developer.mozilla.org/docs/Glossary/Origin)
+    /// for more details.
+    ///
+    /// \snippet ScenarioPermissionManagement.cpp SetPermissionState
+    unsafe fn set_permission_state(
+        &self,
+        /* in */ permission_kind: PermissionKind,
+        /* in */ origin: LPCWSTR,
+        /* in */ state: PermissionState,
+        /* in */
+        completed_handler: *mut *mut ICoreWebView2SetPermissionStateCompletedHandlerVTable,
+    ) -> HRESULT;
+
+    /// Invokes the handler with a collection of all nondefault permission settings.
+    /// Use this method to get the permission state set in the current and previous
+    /// sessions.
+    ///
+    /// \snippet ScenarioPermissionManagement.cpp GetNonDefaultPermissionSettings
+    unsafe fn get_non_default_permission_settings(
+        &self,
+        /* in */
+        completed_handler: *mut *mut ICoreWebView2GetNonDefaultPermissionSettingsCompletedHandlerVTable,
+    ) -> HRESULT;
+}
+
+/// Read-only collection of `PermissionSetting`s (origin, kind, and state). Used to list
+/// the nondefault permission settings on the profile that are persisted across
+/// sessions.
+#[com_interface("f5596f62-3de5-47b1-91e8-a4104b596b96")]
+pub trait ICoreWebView2PermissionSettingCollectionView: IUnknown {
+    /// Gets the `ICoreWebView2PermissionSetting` at the specified index.
+    unsafe fn get_value_at_index(
+        &self,
+        /* in */ index: u32,
+        /* out, retval */
+        permission_setting: *mut *mut *mut ICoreWebView2PermissionSettingVTable,
+    ) -> HRESULT;
+
+    /// The number of `ICoreWebView2PermissionSetting`s in the collection.
+    unsafe fn get_count(&self, /* out, retval */ value: *mut u32) -> HRESULT;
+}
+
+/// Provides a set of properties for a permission setting.
+#[com_interface("792b6eca-5576-421c-9119-74ebb3a4ffb3")]
+pub trait ICoreWebView2PermissionSetting: IUnknown {
+    /// The kind of the permission setting. See `COREWEBVIEW2_PERMISSION_KIND` for
+    /// more details.
+    unsafe fn get_permission_kind(
+        &self,
+        /* out, retval */ value: *mut PermissionKind,
+    ) -> HRESULT;
+
+    /// The origin of the permission setting.
+    unsafe fn get_permission_origin(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// The state of the permission setting.
+    unsafe fn get_permission_state(
+        &self,
+        /* out, retval */ value: *mut PermissionState,
+    ) -> HRESULT;
+}
+
+/// This is the interface in ControllerOptions for ScriptLocale.
+#[com_interface("06c991d8-9e7e-11ed-a8fc-0242ac120002")]
+pub trait ICoreWebView2ControllerOptions2: ICoreWebView2ControllerOptions {
+    /// The default locale for the WebView2.  It sets the default locale for all
+    /// Intl JavaScript APIs and other JavaScript APIs that depend on it, namely
+    /// `Intl.DateTimeFormat()` which affects string formatting like
+    /// in the time/date formats. Example: `Intl.DateTimeFormat().format(new Date())`
+    /// The intended locale value is in the format of
+    /// BCP 47 Language Tags. More information can be found from
+    /// [IETF BCP47](https://www.ietf.org/rfc/bcp/bcp47.html).
+    ///
+    /// This property sets the locale for a CoreWebView2Environment used to create the
+    /// WebView2ControllerOptions object, which is passed as a parameter in
+    /// `CreateCoreWebView2ControllerWithOptions`.
+    ///
+    /// Changes to the ScriptLocale property apply to renderer processes created after
+    /// the change. Any existing renderer processes will continue to use the previous
+    /// ScriptLocale value. To ensure changes are applied to all renderer process,
+    /// close and restart the CoreWebView2Environment and all associated WebView2 objects.
+    ///
+    /// The default value for ScriptLocale will depend on the WebView2 language
+    /// and OS region. If the language portions of the WebView2 language and OS region
+    /// match, then it will use the OS region. Otherwise, it will use the WebView2
+    /// language.
+    ///
+    /// | OS Region | WebView2 Language | Default WebView2 ScriptLocale |
+    /// |-----------|-------------------|-------------------------------|
+    /// | en-GB     | en-US             | en-GB                         |
+    /// | es-MX     | en-US             | en-US                         |
+    /// | en-US     | en-GB             | en-US                         |
+    ///
+    /// You can set the ScriptLocale to the empty string to get the default ScriptLocale value.
+    ///
+    /// Use OS specific APIs to determine the OS region to use with this property
+    /// if you want to match the OS. For example:
+    ///
+    /// Win32 C++:
+    /// ```cpp
+    ///   wchar_t osLocale[LOCALE_NAME_MAX_LENGTH] = {0};
+    ///   GetUserDefaultLocaleName(osLocale, LOCALE_NAME_MAX_LENGTH);
+    /// ```
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    /// \snippet AppWindow.cpp ScriptLocaleSetting
+    unsafe fn get_script_locale(&self, /* out, retval */ locale: *mut LPWSTR) -> HRESULT;
+
+    /// Sets the `ScriptLocale` property.
+    unsafe fn put_script_locale(&self, /* in */ locale: LPCWSTR) -> HRESULT;
+}
+
+/// The shared buffer object that is created by [CreateSharedBuffer](/microsoft-edge/webview2/reference/win32/icorewebview2environment12#createsharedbuffer).
+/// The object is presented to script as ArrayBuffer when posted to script with
+/// [PostSharedBufferToScript](/microsoft-edge/webview2/reference/win32/icorewebview2_17#postsharedbuffertoscript).
+#[com_interface("B747A495-0C6F-449E-97B8-2F81E9D6AB43")]
+pub trait ICoreWebView2SharedBuffer: IUnknown {
+    /// The size of the shared buffer in bytes.
+    unsafe fn get_size(&self, /* out, retval */ value: *mut u64) -> HRESULT;
+
+    /// The memory address of the shared buffer.
+    unsafe fn get_buffer(&self, /* out, retval */ value: *mut *mut BYTE) -> HRESULT;
+
+    /// Get an IStream object that can be used to access the shared buffer.
+    unsafe fn open_stream(
+        &self,
+        /* out, retval */ value: *mut *mut *mut IStreamVTable,
+    ) -> HRESULT;
+
+    /// Returns a handle to the file mapping object that backs this shared buffer.
+    /// The returned handle is owned by the shared buffer object. You should not
+    /// call CloseHandle on it.
+    /// Normal app should use `Buffer` or `OpenStream` to get memory address
+    /// or IStream object to access the buffer.
+    /// For advanced scenarios, you could use file mapping APIs to obtain other views
+    /// or duplicate this handle to another application process and create a view from
+    /// the duplicated handle in that process to access the buffer from that separate process.
+    unsafe fn get_file_mapping_handle(&self, /* out, retval */ value: *mut HANDLE) -> HRESULT;
+
+    /// Release the backing shared memory. The application should call this API when no
+    /// access to the buffer is needed any more, to ensure that the underlying resources
+    /// are released timely even if the shared buffer object itself is not released due to
+    /// some leaked reference.
+    /// After the shared buffer is closed, the buffer address and file mapping handle previously
+    /// obtained becomes invalid and cannot be used anymore. Accessing properties of the object
+    /// will fail with `RO_E_CLOSED`. Operations like Read or Write on the IStream objects returned
+    /// from `OpenStream` will fail with `RO_E_CLOSED`. `PostSharedBufferToScript` will also
+    /// fail with `RO_E_CLOSED`.
+    ///
+    /// The script code should call `chrome.webview.releaseBuffer` with
+    /// the shared buffer as the parameter to release underlying resources as soon
+    /// as it does not need access the shared buffer any more.
+    /// When script tries to access the buffer after calling `chrome.webview.releaseBuffer`,
+    /// JavaScript `TypeError` exception will be raised complaining about accessing a
+    /// detached ArrayBuffer, the same exception when trying to access a transferred ArrayBuffer.
+    ///
+    /// Closing the buffer object on native side doesn't impact access from Script and releasing
+    /// the buffer from script doesn't impact access to the buffer from native side.
+    /// The underlying shared memory will be released by the OS when both native and script side
+    /// release the buffer.
+    unsafe fn close(&self) -> HRESULT;
+}
+
+/// Representation of a DOM
+/// [File](https://developer.mozilla.org/docs/Web/API/File) object
+/// passed via WebMessage. You can use this object to obtain the path of a
+/// File dropped on WebView2.
+/// \snippet ScenarioDragDrop.cpp DroppedFilePath
+#[com_interface("f2c19559-6bc1-4583-a757-90021be9afec")]
+pub trait ICoreWebView2File: IUnknown {
+    /// Get the absolute file path.
+    unsafe fn get_path(&self, /* out, retval */ path: *mut LPWSTR) -> HRESULT;
+}
+
+/// Read-only collection of generic objects.
+#[com_interface("0f36fd87-4f69-4415-98da-888f89fb9a33")]
+pub trait ICoreWebView2ObjectCollectionView: IUnknown {
+    /// Gets the number of items in the collection.
+    unsafe fn get_count(&self, /* out, retval */ value: *mut u32) -> HRESULT;
+
+    /// Gets the object at the specified index. Cast the object to the native type
+    /// to access its specific properties.
+    unsafe fn get_value_at_index(
+        &self,
+        /* in */ index: u32,
+        /* out, retval */ value: *mut *mut *mut IUnknownVTable,
+    ) -> HRESULT;
+}
+
+/// Extension of WebMessageReceivedEventArgs to provide access to additional
+/// WebMessage objects.
+#[com_interface("06fc7ab7-c90c-4297-9389-33ca01cf6d5e")]
+pub trait ICoreWebView2WebMessageReceivedEventArgs2:
+    ICoreWebView2WebMessageReceivedEventArgs
+{
+    /// Additional received WebMessage objects. To pass `additionalObjects` via
+    /// WebMessage to the app, use the
+    /// `chrome.webview.postMessageWithAdditionalObjects` content API.
+    /// Any DOM object type that can be natively representable that has been
+    /// passed in to `additionalObjects` parameter will be accessible here.
+    /// Currently a WebMessage object can be the `ICoreWebView2File` type.
+    /// Entries in the collection can be `nullptr` if `null` or `undefined` was
+    /// passed.
+    unsafe fn get_additional_objects(
+        &self,
+        /* out, retval */ value: *mut *mut *mut ICoreWebView2ObjectCollectionViewVTable,
+    ) -> HRESULT;
+}
+
+/// This is the ICoreWebView2Profile interface for cookie manager.
+#[com_interface("2EE5B76E-6E80-4DF2-BCD3-D4EC3340A01B")]
+pub trait ICoreWebView2Profile5: ICoreWebView2Profile4 {
+    /// Get the cookie manager for the profile. All CoreWebView2s associated with this
+    /// profile share the same cookie values. Changes to cookies in this cookie manager apply to all
+    /// CoreWebView2s associated with this profile.
+    /// See ICoreWebView2CookieManager.
+    ///
+    /// \snippet ScenarioCookieManagement.cpp CookieManagerProfile
+    unsafe fn get_cookie_manager(
+        &self,
+        /* out, retval */ cookie_manager: *mut *mut *mut ICoreWebView2CookieManagerVTable,
+    ) -> HRESULT;
+}
+
+/// Interfaces in profile for managing password-autosave and general-autofill.
+#[com_interface("BD82FA6A-1D65-4C33-B2B4-0393020CC61B")]
+pub trait ICoreWebView2Profile6: ICoreWebView2Profile5 {
+    /// IsPasswordAutosaveEnabled controls whether autosave for password
+    /// information is enabled. The IsPasswordAutosaveEnabled property behaves
+    /// independently of the IsGeneralAutofillEnabled property. When IsPasswordAutosaveEnabled is
+    /// false, no new password data is saved and no Save/Update Password prompts are displayed.
+    /// However, if there was password data already saved before disabling this setting,
+    /// then that password information is auto-populated, suggestions are shown and clicking on
+    /// one will populate the fields.
+    /// When IsPasswordAutosaveEnabled is true, password information is auto-populated,
+    /// suggestions are shown and clicking on one will populate the fields, new data
+    /// is saved, and a Save/Update Password prompt is displayed.
+    /// It will take effect immediately after setting.
+    /// The default value is `FALSE`.
+    /// This property has the same value as
+    /// `CoreWebView2Settings.IsPasswordAutosaveEnabled`, and changing one will
+    /// change the other. All `CoreWebView2`s with the same `CoreWebView2Profile`
+    /// will share the same value for this property, so for the `CoreWebView2`s
+    /// with the same profile, their
+    /// `CoreWebView2Settings.IsPasswordAutosaveEnabled` and
+    /// `CoreWebView2Profile.IsPasswordAutosaveEnabled` will always have the same
+    /// value.
+    ///
+    /// \snippet SettingsComponent.cpp ToggleProfilePasswordAutosaveEnabled
+    unsafe fn get_is_password_autosave_enabled(
+        &self,
+        /* out, retval */ value: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Set the IsPasswordAutosaveEnabled property.
+    unsafe fn put_is_password_autosave_enabled(&self, /* in */ value: BOOL) -> HRESULT;
+
+    /// IsGeneralAutofillEnabled controls whether autofill for information
+    /// like names, street and email addresses, phone numbers, and arbitrary input
+    /// is enabled. This excludes password and credit card information. When
+    /// IsGeneralAutofillEnabled is false, no suggestions appear, and no new information
+    /// is saved. When IsGeneralAutofillEnabled is true, information is saved, suggestions
+    /// appear and clicking on one will populate the form fields.
+    /// It will take effect immediately after setting.
+    /// The default value is `TRUE`.
+    /// This property has the same value as
+    /// `CoreWebView2Settings.IsGeneralAutofillEnabled`, and changing one will
+    /// change the other. All `CoreWebView2`s with the same `CoreWebView2Profile`
+    /// will share the same value for this property, so for the `CoreWebView2`s
+    /// with the same profile, their
+    /// `CoreWebView2Settings.IsGeneralAutofillEnabled` and
+    /// `CoreWebView2Profile.IsGeneralAutofillEnabled` will always have the same
+    /// value.
+    ///
+    /// \snippet SettingsComponent.cpp ToggleProfileGeneralAutofillEnabled
+    unsafe fn get_is_general_autofill_enabled(
+        &self,
+        /* out, retval */ value: *mut BOOL,
+    ) -> HRESULT;
+
+    /// Set the IsGeneralAutofillEnabled property.
+    unsafe fn put_is_general_autofill_enabled(&self, /* in */ value: BOOL) -> HRESULT;
+}
+
+/// This is a continuation of the `ICoreWebView2NewWindowRequestedEventArgs` interface.
+#[com_interface("842bed3c-6ad6-4dd9-b938-28c96667ad66")]
+pub trait ICoreWebView2NewWindowRequestedEventArgs3:
+    ICoreWebView2NewWindowRequestedEventArgs2
+{
+    /// The frame info of the frame where the new window request originated. The
+    /// `OriginalSourceFrameInfo` is a snapshot of frame information at the time when the
+    /// new window was requested. See `ICoreWebView2FrameInfo` for details on frame
+    /// properties.
+    unsafe fn get_original_source_frame_info(
+        &self,
+        /* out, retval */ frame_info: *mut *mut *mut ICoreWebView2FrameInfoVTable,
+    ) -> HRESULT;
+}
+
+/// Interfaces in profile for managing browser extensions.
+#[com_interface("7b4c7906-a1aa-4cb4-b723-db09f813d541")]
+pub trait ICoreWebView2Profile7: ICoreWebView2Profile6 {
+    /// Adds the [browser extension](https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions)
+    /// using the extension path for unpacked extensions from the local device. Extension is
+    /// running right after installation.
+    /// The extension folder path is the topmost folder of an unpacked browser extension and
+    /// contains the browser extension manifest file.
+    /// If the `extensionFolderPath` is an invalid path or doesn't contain the extension manifest.json
+    /// file, this function will return `ERROR_FILE_NOT_FOUND` to callers.
+    /// Installed extension will default `IsEnabled` to true.
+    /// When `AreBrowserExtensionsEnabled` is `FALSE`, `AddBrowserExtension` will fail and return
+    /// HRESULT `ERROR_NOT_SUPPORTED`.
+    /// During installation, the content of the extension is not copied to the user data folder.
+    /// Once the extension is installed, changing the content of the extension will cause the
+    /// extension to be removed from the installed profile.
+    /// When an extension is added the extension is persisted in the corresponding profile. The
+    /// extension will still be installed the next time you use this profile.
+    /// When an extension is installed from a folder path, adding the same extension from the same
+    /// folder path means reinstalling this extension. When two extensions with the same Id are
+    /// installed, only the later installed extension will be kept.
+    ///
+    /// Extensions that are designed to include any UI interactions (e.g. icon, badge, pop up, etc.)
+    /// can be loaded and used but will have missing UI entry points due to the lack of browser
+    /// UI elements to host these entry points in WebView2.
+    ///
+    /// The following summarizes the possible error values that can be returned from
+    /// `AddBrowserExtension` and a description of why these errors occur.
+    ///
+    /// Error value                                     | Description
+    /// ----------------------------------------------- | --------------------------
+    /// `HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED)`       | Extensions are disabled.
+    /// `HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND)`      | Cannot find `manifest.json` file or it is not a valid extension manifest.
+    /// `E_ACCESSDENIED`                                | Cannot load extension with file or directory name starting with \"_\", reserved for use by the system.
+    /// `E_FAIL`                                        | Extension failed to install with other unknown reasons.
+    unsafe fn add_browser_extension(
+        &self,
+        /* in */ extension_folder_path: LPCWSTR,
+        /* in */
+        handler: *mut *mut ICoreWebView2ProfileAddBrowserExtensionCompletedHandlerVTable,
+    ) -> HRESULT;
+
+    /// Gets a snapshot of the set of extensions installed at the time `GetBrowserExtensions` is
+    /// called. If an extension is installed or uninstalled after `GetBrowserExtensions` completes,
+    /// the list returned by `GetBrowserExtensions` remains the same.
+    /// When `AreBrowserExtensionsEnabled` is `FALSE`, `GetBrowserExtensions` won't return any
+    /// extensions on current user profile.
+    unsafe fn get_browser_extensions(
+        &self,
+        /* in */
+        handler: *mut *mut ICoreWebView2ProfileGetBrowserExtensionsCompletedHandlerVTable,
+    ) -> HRESULT;
+}
+
+/// Provides a set of properties for managing an Extension, which includes
+/// an ID, name, and whether it is enabled or not, and the ability to Remove
+/// the Extension, and enable or disable it.
+#[com_interface("7EF7FFA0-FAC5-462C-B189-3D9EDBE575DA")]
+pub trait ICoreWebView2BrowserExtension: IUnknown {
+    /// This is the browser extension's ID. This is the same browser extension ID returned by
+    /// the browser extension API [`chrome.runtime.id`](https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/API/runtime/id).
+    /// Please see that documentation for more details on how the ID is generated.
+    /// After an extension is removed, calling `Id` will return the id of the extension that is removed.
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_id(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// This is the browser extension's name. This value is defined in this browser extension's
+    /// manifest.json file. If manifest.json define extension's localized name, this value will
+    /// be the localized version of the name.
+    /// Please see [Manifest.json name](https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/name)
+    /// for more details.
+    /// After an extension is removed, calling `Name` will return the name of the extension that is removed.
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_name(&self, /* out, retval */ value: *mut LPWSTR) -> HRESULT;
+
+    /// Removes this browser extension from its WebView2 Profile. The browser extension is removed
+    /// immediately including from all currently running HTML documents associated with this
+    /// WebView2 Profile. The removal is persisted and future uses of this profile will not have this
+    /// extension installed. After an extension is removed, calling `Remove` again will cause an exception.
+    unsafe fn remove(
+        &self,
+        /* in */
+        handler: *mut *mut ICoreWebView2BrowserExtensionRemoveCompletedHandlerVTable,
+    ) -> HRESULT;
+
+    /// If `isEnabled` is true then the Extension is enabled and running in WebView instances.
+    /// If it is false then the Extension is disabled and not running in WebView instances.
+    /// When a Extension is first installed, `IsEnable` are default to be `TRUE`.
+    /// `isEnabled` is persisted per profile.
+    /// After an extension is removed, calling `isEnabled` will return the value at the time it was removed.
+    unsafe fn get_is_enabled(&self, /* out, retval */ value: *mut BOOL) -> HRESULT;
+
+    /// Sets whether this browser extension is enabled or disabled. This change applies immediately
+    /// to the extension in all HTML documents in all WebView2s associated with this profile.
+    /// After an extension is removed, calling `Enable` will not change the value of `IsEnabled`.
+    unsafe fn enable(
+        &self,
+        /* in */ is_enabled: BOOL,
+        /* in */
+        handler: *mut *mut ICoreWebView2BrowserExtensionEnableCompletedHandlerVTable,
+    ) -> HRESULT;
+}
+
+/// The caller implements this interface to receive the result of removing
+/// the browser Extension from the Profile.
+#[com_interface("8E41909A-9B18-4BB1-8CDF-930F467A50BE")]
+pub trait ICoreWebView2BrowserExtensionRemoveCompletedHandler: IUnknown {
+    /// Provides the result of the browser extension Remove operation.
+    unsafe fn invoke(&self, /* in */ error_code: HRESULT) -> HRESULT;
+}
+
+/// The caller implements this interface to receive the result of setting the
+/// browser Extension as enabled or disabled. If enabled, the browser Extension is
+/// running in WebView instances. If disabled, the browser Extension is not running in WebView instances.
+#[com_interface("30C186CE-7FAD-421F-A3BC-A8EAF071DDB8")]
+pub trait ICoreWebView2BrowserExtensionEnableCompletedHandler: IUnknown {
+    /// Provides the result of the browser extension enable operation.
+    unsafe fn invoke(&self, /* in */ error_code: HRESULT) -> HRESULT;
+}
+
+/// Provides a set of properties for managing browser Extension Lists from user profile. This
+/// includes the number of browser Extensions in the list, and the ability to get an browser
+/// Extension from the list at a particular index.
+#[com_interface("2EF3D2DC-BD5F-4F4D-90AF-FD67798F0C2F")]
+pub trait ICoreWebView2BrowserExtensionList: IUnknown {
+    /// The number of browser Extensions in the list.
+    unsafe fn get_count(&self, /* out, retval */ count: *mut u32) -> HRESULT;
+
+    /// Gets the browser Extension located in the browser Extension List at the given index.
+    unsafe fn get_value_at_index(
+        &self,
+        /* in */ index: u32,
+        /* out, retval */ extension: *mut *mut *mut ICoreWebView2BrowserExtensionVTable,
+    ) -> HRESULT;
+}
+
+/// The caller implements this interface to receive the result of
+/// getting the browser Extensions.
+#[com_interface("FCE16A1C-F107-4601-8B75-FC4940AE25D0")]
+pub trait ICoreWebView2ProfileGetBrowserExtensionsCompletedHandler: IUnknown {
+    /// Provides the browser extension list for the requested user profile.
+    unsafe fn invoke(
+        &self,
+        /* in */ error_code: HRESULT,
+        /* in */ extension_list: *mut *mut ICoreWebView2BrowserExtensionListVTable,
+    ) -> HRESULT;
+}
+
+/// The caller implements this interface to receive the result
+/// of loading an browser Extension.
+#[com_interface("DF1AAB27-82B9-4AB6-AAE8-017A49398C14")]
+pub trait ICoreWebView2ProfileAddBrowserExtensionCompletedHandler: IUnknown {
+    /// Provides the result of the `AddBrowserExtension` operation.g
+    unsafe fn invoke(
+        &self,
+        /* in */ error_code: HRESULT,
+        /* in */ extension: *mut *mut ICoreWebView2BrowserExtensionVTable,
+    ) -> HRESULT;
+}
+
+/// This is the profile interface that manages profile
+/// deletion.
+#[com_interface("fbf70c2f-eb1f-4383-85a0-163e92044011")]
+pub trait ICoreWebView2Profile8: ICoreWebView2Profile7 {
+    /// After the API is called, the profile will be marked for deletion. The
+    /// local profile's directory will be deleted at browser process exit. If it
+    /// fails to delete, because something else is holding the files open,
+    /// WebView2 will try to delete the profile at all future browser process
+    /// starts until successful.
+    /// The corresponding CoreWebView2s will be closed and the
+    /// CoreWebView2Profile.Deleted event will be raised. See
+    /// `CoreWebView2Profile.Deleted` for more information.
+    /// If you try to create a new profile with the same name as an existing
+    /// profile that has been marked as deleted but hasn't yet been deleted,
+    /// profile creation will fail with HRESULT_FROM_WIN32(ERROR_DELETE_PENDING).
+    ///
+    /// \snippet SettingsComponent.cpp DeleteProfile
+    unsafe fn delete(&self) -> HRESULT;
+
+    /// Add an event handler for the `Deleted` event. The `Deleted` event is
+    /// raised when the profile is marked for deletion. When this event is
+    /// raised, the CoreWebView2Profile and its corresponding CoreWebView2s have
+    /// been closed, and cannot be used anymore.
+    ///
+    /// \snippet AppWindow.cpp ProfileDeleted
+    unsafe fn add_deleted(
+        &self,
+        /* in */ event_handler: *mut *mut ICoreWebView2ProfileDeletedEventHandlerVTable,
+        /* out */ token: *mut EventRegistrationToken,
+    ) -> HRESULT;
+
+    /// Removes an event handler previously added with `add_Deleted`.
+    unsafe fn remove_deleted(&self, /* in */ token: EventRegistrationToken) -> HRESULT;
+}
+
+/// Receives the `CoreWebView2Profile.Deleted` event.
+#[com_interface("DF35055D-772E-4DBE-B743-5FBF74A2B258")]
+pub trait ICoreWebView2ProfileDeletedEventHandler: IUnknown {
+    /// Called to provide the implementer with the event args for the
+    /// profile deleted event. No event args exist and the `args`
+    /// parameter is set to `null`.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2ProfileVTable,
+        /* in */ args: *mut *mut IUnknownVTable,
+    ) -> HRESULT;
+}
+
+/// This is the Interface for non-client region change event args.
+#[com_interface("AB71D500-0820-4A52-809C-48DB04FF93BF")]
+pub trait ICoreWebView2NonClientRegionChangedEventArgs: IUnknown {
+    /// This property represents the COREWEBVIEW2_NON_CLIENT_REGION_KIND which the
+    /// region changed event corresponds to. With this property an app can query
+    /// for a collection of rects which have that region kind by using
+    /// QueryNonClientRegion on the composition controller.
+    unsafe fn get_region_kind(
+        &self,
+        /* out, retval */ value: *mut NonClientRegionKind,
+    ) -> HRESULT;
+}
+
+/// This is the Interface of the event handler for the non-client region changed
+/// event.
+#[com_interface("4A794E66-AA6C-46BD-93A3-382196837680")]
+pub trait ICoreWebView2NonClientRegionChangedEventHandler: IUnknown {
+    /// This is the event handler for add_NonClientRegionChanged when executed,
+    /// it recieves the event args.
+    unsafe fn invoke(
+        &self,
+        /* in */ sender: *mut *mut ICoreWebView2CompositionControllerVTable,
+        /* in */ args: *mut *mut ICoreWebView2NonClientRegionChangedEventArgsVTable,
+    ) -> HRESULT;
+}
+
+/// This Interface Represents a Collection of Region Rects.
+#[com_interface("333353B8-48BF-4449-8FCC-22697FAF5753")]
+pub trait ICoreWebView2RegionRectCollectionView: IUnknown {
+    /// This method gets the number of Rects contained in the collection.
+    unsafe fn get_count(&self, /* out, retval */ value: *mut u32) -> HRESULT;
+
+    /// This method gets the Rect at the specified index.
+    unsafe fn get_value_at_index(
+        &self,
+        /* in */ index: u32,
+        /* out, retval */ value: *mut RECT,
+    ) -> HRESULT;
+}
+
+/// A continuation of the ICoreWebView2ProcessFailedEventArgs2 interface
+/// for getting blocked file for code integrity process failures.
+///
+#[com_interface("ab667428-094d-5fd1-b480-8b4c0fdbdf2f")]
+pub trait ICoreWebView2ProcessFailedEventArgs3: ICoreWebView2ProcessFailedEventArgs2 {
+    /// This property is the full path of the module that caused the
+    /// crash in cases of Windows Code Integrity failures.
+    /// [Windows Code Integrity](/mem/intune/user-help/you-need-to-enable-code-integrity)
+    /// is a feature that verifies the integrity and
+    /// authenticity of dynamic-link libraries (DLLs)
+    /// on Windows systems. It ensures that only trusted
+    /// code can run on the system and prevents unauthorized or
+    /// malicious modifications.
+    /// When ProcessFailed occurred due to a failed Code Integrity check,
+    /// this property returns the full path of the file that was prevented from
+    /// loading on the system.
+    /// The webview2 process which tried to load the DLL will fail with
+    /// exit code STATUS_INVALID_IMAGE_HASH(-1073740760).
+    /// A file can fail integrity check for various
+    /// reasons, such as:
+    /// - It has an invalid or missing signature that does
+    /// not match the publisher or signer of the file.
+    /// - It has been tampered with or corrupted by malware or other software.
+    /// - It has been blocked by an administrator or a security policy.
+    /// This property always will be the empty string if failure is not caused by
+    /// STATUS_INVALID_IMAGE_HASH.
+    ///
+    ///
+    /// The caller must free the returned string with `CoTaskMemFree`.  See
+    /// [API Conventions](/microsoft-edge/webview2/concepts/win32-api-conventions#strings).
+    unsafe fn get_failure_source_module_path(
+        &self,
+        /* out, retval */ value: *mut LPWSTR,
+    ) -> HRESULT;
+}
+
+/// Additional options used to create the WebView2 Environment that support
+/// specifying the `ReleaseChannels` and `ChannelSearchKind`.
+///
+#[com_interface("c48d539f-e39f-441c-ae68-1f66e570bdc5")]
+pub trait ICoreWebView2EnvironmentOptions7: IUnknown {
+    /// Gets the `ChannelSearchKind` property.
+    unsafe fn get_channel_search_kind(
+        &self,
+        /* out, retval */ value: *mut ChannelSearchKind,
+    ) -> HRESULT;
+
+    /// The `ChannelSearchKind` property is `COREWEBVIEW2_CHANNEL_SEARCH_KIND_MOST_STABLE`
+    /// by default; environment creation searches for a release channel on the machine
+    /// from most to least stable using the first channel found. The default search order is:
+    /// WebView2 Runtime -&gt; Beta -&gt; Dev -&gt; Canary. Set `ChannelSearchKind` to
+    /// `COREWEBVIEW2_CHANNEL_SEARCH_KIND_LEAST_STABLE` to reverse the search order
+    /// so that environment creation searches for a channel from least to most stable. If
+    /// `ReleaseChannels` has been provided, the loader will only search
+    /// for channels in the set. See `COREWEBVIEW2_RELEASE_CHANNELS` for more details
+    /// on channels.
+    ///
+    /// This property can be overridden by the corresponding
+    /// registry key `ChannelSearchKind` or the environment variable
+    /// `WEBVIEW2_CHANNEL_SEARCH_KIND`. Set the value to `1` to set the search kind to
+    /// `COREWEBVIEW2_CHANNEL_SEARCH_KIND_LEAST_STABLE`. See
+    /// `CreateCoreWebView2EnvironmentWithOptions` for more details on overrides.
+    ///
+    unsafe fn put_channel_search_kind(&self, /* in */ value: ChannelSearchKind) -> HRESULT;
+
+    /// Gets the `ReleaseChannels` property.
+    unsafe fn get_release_channels(
+        &self,
+        /* out, retval */ value: *mut ReleaseChannels,
+    ) -> HRESULT;
+
+    /// Sets the `ReleaseChannels`, which is a mask of one or more
+    /// `COREWEBVIEW2_RELEASE_CHANNELS` indicating which channels environment
+    /// creation should search for. OR operation(s) can be applied to multiple
+    /// `COREWEBVIEW2_RELEASE_CHANNELS` to create a mask. The default value is a
+    /// a mask of all the channels. By default, environment creation searches for
+    /// channels from most to least stable, using the first channel found on the
+    /// device. When `ReleaseChannels` is provided, environment creation will only
+    /// search for the channels specified in the set. Set `ChannelSearchKind` to
+    /// `COREWEBVIEW2_CHANNEL_SEARCH_KIND_LEAST_STABLE` to reverse the search order
+    /// so environment creation searches for least stable build first. See
+    /// `COREWEBVIEW2_RELEASE_CHANNELS` for descriptions of each channel.
+    ///
+    /// `CreateCoreWebView2EnvironmentWithOptions` fails with
+    /// `HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND)` if environment creation is unable
+    /// to find any channel from the `ReleaseChannels` installed on the device.
+    /// Use `GetAvailableCoreWebView2BrowserVersionStringWithOptions` on
+    /// `ICoreWebView2Environment` to verify which channel is used when this option
+    /// is set.
+    ///
+    /// Examples:
+    /// |   ReleaseChannels   |   Channel Search Kind: Most Stable (default)   |   Channel Search Kind: Least Stable   |
+    /// | --- | --- | --- |
+    /// |COREWEBVIEW2_RELEASE_CHANNELS_BETA \| COREWEBVIEW2_RELEASE_CHANNELS_STABLE| WebView2 Runtime -&gt; Beta | Beta -&gt; WebView2 Runtime|
+    /// |COREWEBVIEW2_RELEASE_CHANNELS_CANARY \| COREWEBVIEW2_RELEASE_CHANNELS_DEV \| COREWEBVIEW2_RELEASE_CHANNELS_BETA \| COREWEBVIEW2_RELEASE_CHANNELS_STABLE| WebView2 Runtime -&gt; Beta -&gt; Dev -&gt; Canary | Canary -&gt; Dev -&gt; Beta -&gt; WebView2 Runtime |
+    /// |COREWEBVIEW2_RELEASE_CHANNELS_CANARY| Canary | Canary |
+    /// |COREWEBVIEW2_RELEASE_CHANNELS_BETA \| COREWEBVIEW2_RELEASE_CHANNELS_CANARY \| COREWEBVIEW2_RELEASE_CHANNELS_STABLE | WebView2 Runtime -&gt; Beta -&gt; Canary | Canary -&gt; Beta -&gt; WebView2 Runtime |
+    ///
+    /// If both `BrowserExecutableFolder` and `ReleaseChannels` are provided, the
+    /// `BrowserExecutableFolder` takes precedence, regardless of whether or not the
+    /// channel of `BrowserExecutableFolder` is included in the `ReleaseChannels`.
+    /// `ReleaseChannels` can be overridden by the corresponding registry override
+    /// `ReleaseChannels` or the environment variable `WEBVIEW2_RELEASE_CHANNELS`.
+    /// Set the value to a comma-separated string of integers, which map to the
+    /// following release channel values: Stable (0), Beta (1), Dev (2), and
+    /// Canary (3). For example, the values "0,2" and "2,0" indicate that environment
+    /// creation should only search for Dev channel and the WebView2 Runtime, using the
+    /// order indicated by `ChannelSearchKind`. Environment creation attempts to
+    /// interpret each integer and treats any invalid entry as Stable channel. See
+    /// `CreateCoreWebView2EnvironmentWithOptions` for more details on overrides.
+    ///
+    unsafe fn put_release_channels(&self, /* in */ value: ReleaseChannels) -> HRESULT;
 }

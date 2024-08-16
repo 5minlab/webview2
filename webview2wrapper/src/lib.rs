@@ -6,7 +6,7 @@ use webview2::host_object::IDispatch;
 use webview2::*;
 use winapi::shared::windef::*;
 
-pub type WebView2DataWrapper = Arc<RwLock<Option<WebView2Data>>>;
+type WebView2DataWrapper = Arc<RwLock<Option<WebView2Data>>>;
 
 struct WebView2Data {
     controller: Controller,
@@ -16,7 +16,7 @@ struct WebView2Data {
     editor_obj: Box<host_object::Variant>,
     #[allow(unused)]
     message_obj: Box<host_object::Variant>,
-    on_message: Option<fn(*const c_char) -> ()>,
+    #[allow(unused)]
 
     queue: mpsc::Receiver<String>,
 }
@@ -80,7 +80,6 @@ pub unsafe extern "C" fn webview2_open(url_ptr: *const u16, len: u32) -> usize {
                         controller,
                         editor_obj,
                         message_obj,
-                        on_message: None,
 
                         queue: receiver,
                     });
