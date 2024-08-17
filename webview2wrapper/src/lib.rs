@@ -1,4 +1,3 @@
-use std::ffi::*;
 use std::mem::ManuallyDrop;
 use std::sync::mpsc;
 use std::sync::{Arc, RwLock};
@@ -133,7 +132,6 @@ pub unsafe extern "C" fn webview2_open_dev_tools_window(ptr: usize) {
     std::mem::forget(data);
 }
 
-
 #[no_mangle]
 pub unsafe extern "C" fn webview2_update_position(ptr: usize, left: i32, top: i32, w: i32, h: i32) {
     let data: WebView2DataWrapper = Arc::from_raw(ptr as *mut _);
@@ -155,27 +153,32 @@ pub unsafe extern "C" fn webview2_update_position(ptr: usize, left: i32, top: i3
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn webview2_pull(ptr: usize) -> *const c_char {
-    use std::ffi::CString;
-
+pub unsafe extern "C" fn webview2_pull(ptr: usize, out: *mut *const u16, len: *mut u32) {
     let data: WebView2DataWrapper = Arc::from_raw(ptr as *mut _);
 
-    let ret = {
+    {
         let mut guard = data.write().unwrap();
         if let Some(data) = guard.as_mut() {
             if let Ok(s) = data.queue.try_recv() {
-                let c_str = CString::new(s).unwrap();
-                c_str.into_raw()
-            } else {
-                std::ptr::null()
+                let mut utf16_str = s.encode_utf16().collect::<Vec<u16>>();
+                utf16_str.push(0);
+                let utf16_str = utf16_str.into_boxed_slice();
+
+                *out = utf16_str.as_ptr();
+                *len = utf16_str.len() as u32;
+
+                std::mem::forget(utf16_str);
             }
-        } else {
-            std::ptr::null()
         }
-    };
+    }
 
     std::mem::forget(data);
-    ret
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn webview2_pull_free(data: *mut u16, len: u32) {
+    let b: Box<[u16]> = Box::from_raw(std::slice::from_raw_parts_mut(data, len as usize));
+    std::mem::drop(b);
 }
 
 #[no_mangle]
