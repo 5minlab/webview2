@@ -812,6 +812,7 @@ impl Controller {
             inner: unsafe { add_ref_to_rc(ppv) },
         })
     }
+
     pub fn get_controller2(&self) -> Result<Controller2> {
         let inner = self
             .inner
@@ -819,12 +820,35 @@ impl Controller {
             .ok_or_else(|| Error::new(E_NOINTERFACE))?;
         Ok(Controller2 { inner })
     }
+
+    pub fn get_controller3(&self) -> Result<Controller3> {
+        let inner = self
+            .inner
+            .get_interface::<dyn ICoreWebView2Controller3>()
+            .ok_or_else(|| Error::new(E_NOINTERFACE))?;
+        Ok(Controller3 { inner })
+    }
 }
 
 impl Controller2 {
     get!(get_default_background_color, Color);
     put!(put_default_background_color, color: Color);
 }
+
+impl Controller3 {
+    get!(get_rasterization_scale, f64);
+    put!(put_rasterization_scale, scale: f64);
+
+    get!(get_should_detect_monitor_scale_changes, i32);
+    put!(put_should_detect_monitor_scale_changes, v: i32);
+
+    // TODO: add_RasterizationScaleChanged
+    // TODO: remove_RasterizationScaleChanged
+
+    get!(get_bounds_mode, BoundsMode);
+    put!(put_bounds_mode, mode: BoundsMode);
+}
+
 
 impl WebView {
     pub fn get_settings(&self) -> Result<Settings> {
@@ -1451,7 +1475,7 @@ impl io::Seek for Stream {
 pub use webview2_sys::{
     CapturePreviewImageFormat, EventRegistrationToken, KeyEventKind, MoveFocusReason,
     PermissionKind, PermissionState, PhysicalKeyStatus, ProcessFailedKind, ScriptDialogKind,
-    WebErrorStatus, WebResourceContext,
+    WebErrorStatus, WebResourceContext, BoundsMode
 };
 
 /// WebView2 Error.
