@@ -61,6 +61,7 @@ See the `examples` directory, especially the heavily commented `win32` example.
 #![allow(non_camel_case_types)]
 
 pub mod host_object;
+pub mod util;
 
 use com::{interfaces::IUnknown, ComInterface, ComPtr, ComRc};
 use std::cell::{Cell, RefCell};

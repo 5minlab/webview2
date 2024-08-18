@@ -12,45 +12,31 @@ use winit::event_loop::{ControlFlow, EventLoop};
 use winit::platform::windows::WindowExtWindows;
 use winit::window::WindowBuilder;
 
+const REF_WIDTH: i32 = 1920i32;
+const REF_HEIGHT: i32 = 1080i32;
+
 fn set_bounds(controller: Controller, width: i32, height: i32) {
     if width <= 0 || height <= 0 {
         return;
     }
-
-    let width_target = 1920i32;
-    let height_target = 1080i32;
-
-    let ratio_w = width as f64 / width_target as f64;
-    let ratio_h = height as f64 / height_target as f64;
-
     let dpi = unsafe {
         winapi::um::winuser::GetDpiForWindow(
             controller.get_parent_window().expect("get_host_window"),
         )
     };
-    let dpi = dpi as f64 / 96.0;
-    let ratio = ratio_w.min(ratio_h);
-
-    // how much space should left in `left` side to ensure 16:9 contents
-    let left = ((width as f64 - 1920.0 * ratio) / 2.0).floor() as i32;
-    let top = ((height as f64 - 1080.0 * ratio) / 2.0).floor() as i32;
-
-    eprintln!(
-        "width: {}, height: {}, left={}, top={}",
-        width, height, left, top
-    );
 
     let rect = RECT {
-        left,
-        top,
-        right: width - left,
-        bottom: height - top,
+        left: 0,
+        top: 0,
+        right: width,
+        bottom: height,
     };
 
-    let zoom = ratio / dpi;
-    controller
-        .set_bounds_and_zoom_factor(rect, zoom)
-        .expect("set_bonds_and_zoom_factor");
+    if let Some((rect, zoom)) = util::calculate_bounds(rect, REF_WIDTH, REF_HEIGHT, dpi) {
+        controller
+            .set_bounds_and_zoom_factor(rect, zoom)
+            .expect("set_bounds_and_zoom_factor");
+    }
 }
 
 fn main() {

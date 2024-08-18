@@ -147,6 +147,38 @@ pub unsafe extern "C" fn webview2_update_position(ptr: usize, left: i32, top: i3
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn webview2_update_position2(
+    ptr: usize,
+    left: i32,
+    top: i32,
+    w: i32,
+    h: i32,
+    ref_width: i32,
+    ref_height: i32,
+) {
+    let r = RECT {
+        left,
+        top,
+        right: w + left,
+        bottom: h + top,
+    };
+
+    with_wrapper(ptr, |data| {
+        let dpi = unsafe {
+            winapi::um::winuser::GetDpiForWindow(
+                data.controller.get_parent_window().expect("get_host_window"),
+            )
+        };
+
+        if let Some((rect, zoom)) = util::calculate_bounds(r, ref_width, ref_height, dpi) {
+            data.controller
+                .set_bounds_and_zoom_factor(rect, zoom)
+                .expect("set_bonds_and_zoom_factor");
+        }
+    });
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn webview2_pull(ptr: usize, out: *mut *const u16, len: *mut u32) {
     with_wrapper(ptr, |data| {
         if let Ok(s) = data.queue.try_recv() {
