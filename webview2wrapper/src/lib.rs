@@ -101,40 +101,39 @@ pub unsafe extern "C" fn webview2_open(url_ptr: *const u16, len: u32) -> usize {
     ptr as usize
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn webview2_set_visible(ptr: usize, visible: i32) {
-    let data: WebView2DataWrapper = Arc::from_raw(ptr as *mut _);
-
+fn with_wrapper<F>(ptr: usize, f: F)
+where
+    F: FnOnce(&mut WebView2Data),
+{
+    let data: WebView2DataWrapper = unsafe { Arc::from_raw(ptr as *mut _) };
     {
         let mut guard = data.write().unwrap();
         if let Some(data) = guard.as_mut() {
-            data.controller
-                .put_is_visible(visible != 0)
-                .expect("put_is_visible");
+            f(data);
         }
     }
-
     std::mem::forget(data);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn webview2_set_visible(ptr: usize, visible: i32) {
+    with_wrapper(ptr, |data| {
+        data.controller
+            .put_is_visible(visible != 0)
+            .expect("put_is_visible");
+    });
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn webview2_open_dev_tools_window(ptr: usize) {
-    let data: WebView2DataWrapper = Arc::from_raw(ptr as *mut _);
-
-    {
-        let mut guard = data.write().unwrap();
-        if let Some(data) = guard.as_mut() {
-            let w = data.controller.get_webview().expect("get_webview");
-            w.open_dev_tools_window().expect("open_dev_tools_window");
-        }
-    }
-
-    std::mem::forget(data);
+    with_wrapper(ptr, |data| {
+        let w = data.controller.get_webview().expect("get_webview");
+        w.open_dev_tools_window().expect("open_dev_tools_window");
+    });
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn webview2_update_position(ptr: usize, left: i32, top: i32, w: i32, h: i32) {
-    let data: WebView2DataWrapper = Arc::from_raw(ptr as *mut _);
     let r = RECT {
         left,
         top,
@@ -142,37 +141,25 @@ pub unsafe extern "C" fn webview2_update_position(ptr: usize, left: i32, top: i3
         bottom: h + top,
     };
 
-    {
-        let mut guard = data.write().unwrap();
-        if let Some(data) = guard.as_mut() {
-            data.controller.put_bounds(r).expect("put_bounds");
-        }
-    }
-
-    std::mem::forget(data);
+    with_wrapper(ptr, |data| {
+        data.controller.put_bounds(r).expect("put_bounds");
+    });
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn webview2_pull(ptr: usize, out: *mut *const u16, len: *mut u32) {
-    let data: WebView2DataWrapper = Arc::from_raw(ptr as *mut _);
+    with_wrapper(ptr, |data| {
+        if let Ok(s) = data.queue.try_recv() {
+            let mut utf16_str = s.encode_utf16().collect::<Vec<u16>>();
+            utf16_str.push(0);
+            let utf16_str = utf16_str.into_boxed_slice();
 
-    {
-        let mut guard = data.write().unwrap();
-        if let Some(data) = guard.as_mut() {
-            if let Ok(s) = data.queue.try_recv() {
-                let mut utf16_str = s.encode_utf16().collect::<Vec<u16>>();
-                utf16_str.push(0);
-                let utf16_str = utf16_str.into_boxed_slice();
+            *out = utf16_str.as_ptr();
+            *len = utf16_str.len() as u32;
 
-                *out = utf16_str.as_ptr();
-                *len = utf16_str.len() as u32;
-
-                std::mem::forget(utf16_str);
-            }
+            std::mem::forget(utf16_str);
         }
-    }
-
-    std::mem::forget(data);
+    });
 }
 
 #[no_mangle]
@@ -183,38 +170,19 @@ pub unsafe extern "C" fn webview2_pull_free(data: *mut u16, len: u32) {
 
 #[no_mangle]
 pub unsafe extern "C" fn webview2_execute_script(ptr: usize, script_ptr: *const u16, len: u32) {
-    let data: WebView2DataWrapper = Arc::from_raw(ptr as *mut _);
-
     let script_data: &[u16] = std::slice::from_raw_parts(script_ptr, len as usize);
     let script_str = String::from_utf16_lossy(script_data);
 
-    {
-        let mut guard = data.write().unwrap();
-        if let Some(data) = guard.as_mut() {
-            if let Ok(webview) = data.controller.get_webview() {
-                let _ = webview.execute_script(&script_str, |_| Ok(()));
-            }
+    with_wrapper(ptr, |data| {
+        if let Ok(webview) = data.controller.get_webview() {
+            let _ = webview.execute_script(&script_str, |_| Ok(()));
         }
-    }
-
-    std::mem::forget(data);
+    });
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn webview2_close(ptr: usize) {
-    let data: WebView2DataWrapper = Arc::from_raw(ptr as *mut _);
-
-    let mut guard = data.write().unwrap();
-    if let Some(data) = guard.as_mut() {
-        /*
-        let w = data.controller.get_webview().expect("get_webview");
-
-        w.remove_host_object_from_script("editor")
-            .expect("remove_host_object_from_script");
-        w.remove_host_object_from_script("functioncall")
-            .expect("remove_host_object_from_script");
-        */
-
+    with_wrapper(ptr, |data| {
         data.controller.close().expect("close");
-    }
+    });
 }
