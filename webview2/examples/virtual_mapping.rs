@@ -47,17 +47,18 @@ fn main() {
                             "example.com",
                             cwd.to_str().unwrap(),
                             HostResourceAccessKind::Allow,
-                        ).expect("set_virtual_host_name_to_folder_mapping");
+                        )
+                        .expect("set_virtual_host_name_to_folder_mapping");
                     }
 
                     unsafe {
                         let mut rect = mem::zeroed();
                         GetClientRect(hwnd, &mut rect);
                         controller.put_bounds(rect).expect("put_bounds");
-                        
                     }
 
-                    w.navigate("https://example.com/index.html").expect("navigate");
+                    w.navigate("https://example.com/index.html")
+                        .expect("navigate");
 
                     controller_clone.set(controller).unwrap();
                     Ok(())

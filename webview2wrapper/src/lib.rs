@@ -15,13 +15,29 @@ struct WebView2Data {
     queue: mpsc::Receiver<String>,
 }
 
+fn from_utf16(ptr: *const u16, len: u32) -> Option<String> {
+    if ptr.is_null() || len == 0 {
+        return None;
+    }
+    let data: &[u16] = unsafe { std::slice::from_raw_parts(ptr, len as usize) };
+    String::from_utf16(data).ok()
+}
+
 #[no_mangle]
-pub unsafe extern "C" fn webview2_open(url_ptr: *const u16, len: u32) -> usize {
+pub unsafe extern "C" fn webview2_open(
+    url_ptr: *const u16,
+    url_len: u32,
+    host_name_ptr: *const u16,
+    host_name_len: u32,
+    folder_path_ptr: *const u16,
+    folder_path_len: u32,
+) -> usize {
     let top = 0;
     let left = 0;
 
-    let url_data: &[u16] = std::slice::from_raw_parts(url_ptr, len as usize);
-    let url_str = String::from_utf16_lossy(url_data);
+    let url_str = from_utf16(url_ptr, url_len).expect("url_str.from_utf16");
+    let host_name = from_utf16(host_name_ptr, host_name_len);
+    let folder_path = from_utf16(folder_path_ptr, folder_path_len);
 
     use winapi::um::winuser::*;
 
@@ -46,7 +62,7 @@ pub unsafe extern "C" fn webview2_open(url_ptr: *const u16, len: u32) -> usize {
 
                     let s3 = settings.get_settings3().expect("get_settings3");
                     s3.put_are_browser_accelerator_keys_enabled(false).unwrap();
-                    
+
                     let s4 = settings.get_settings4().expect("get_settings4");
                     s4.put_is_password_autosave_enabled(false).unwrap();
                     s4.put_is_general_autofill_enabled(false).unwrap();
@@ -94,6 +110,18 @@ pub unsafe extern "C" fn webview2_open(url_ptr: *const u16, len: u32) -> usize {
                         "functioncall".to_owned(),
                         message_obj,
                         move |w| {
+                            if let (Some(host_name), Some(folder_path)) =
+                                (host_name.as_ref(), folder_path.as_ref())
+                            {
+                                w.get_webview_3()
+                                    .expect("get_webview_3")
+                                    .set_virtual_host_name_to_folder_mapping(
+                                        host_name,
+                                        folder_path,
+                                        HostResourceAccessKind::Allow,
+                                    )
+                                    .ok();
+                            }
                             w.navigate(&url_str).expect("navigate");
                         },
                     );
