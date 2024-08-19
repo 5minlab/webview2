@@ -12,37 +12,10 @@ use winit::event_loop::{ControlFlow, EventLoop};
 use winit::platform::windows::WindowExtWindows;
 use winit::window::WindowBuilder;
 
-const REF_WIDTH: i32 = 1920i32;
-const REF_HEIGHT: i32 = 1080i32;
-
-fn set_bounds(controller: Controller, width: i32, height: i32) {
-    if width <= 0 || height <= 0 {
-        return;
-    }
-    let dpi = unsafe {
-        winapi::um::winuser::GetDpiForWindow(
-            controller.get_parent_window().expect("get_host_window"),
-        )
-    };
-
-    let rect = RECT {
-        left: 0,
-        top: 0,
-        right: width,
-        bottom: height,
-    };
-
-    if let Some((rect, zoom)) = util::calculate_bounds(rect, REF_WIDTH, REF_HEIGHT, dpi) {
-        controller
-            .set_bounds_and_zoom_factor(rect, zoom)
-            .expect("set_bounds_and_zoom_factor");
-    }
-}
-
 fn main() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("WebView2 - winit")
+        .with_title("WebView2 - virtual host")
         .with_inner_size(Size::Logical((1600, 900).into()))
         .build(&event_loop)
         .unwrap();
@@ -63,28 +36,28 @@ fn main() {
                         let _ = settings.put_is_status_bar_enabled(false);
                         let _ = settings.put_are_default_context_menus_enabled(false);
                         let _ = settings.put_is_zoom_control_enabled(false);
-
-                        let s3 = settings.get_settings3().expect("get_settings3");
-                        s3.put_are_browser_accelerator_keys_enabled(false).unwrap();
                     });
+
+                    {
+                        let mut cwd = std::env::current_dir().unwrap();
+                        cwd.push("public");
+                        let w3 = w.get_webview_3().expect("get_webview_3");
+
+                        w3.set_virtual_host_name_to_folder_mapping(
+                            "example.com",
+                            cwd.to_str().unwrap(),
+                            HostResourceAccessKind::Allow,
+                        ).expect("set_virtual_host_name_to_folder_mapping");
+                    }
 
                     unsafe {
                         let mut rect = mem::zeroed();
                         GetClientRect(hwnd, &mut rect);
-                        set_bounds(controller.clone(), rect.right, rect.bottom);
-
-                        /*
-                        let controller3 = controller.get_controller3().expect("get_controller3");
-                        controller3.put_bounds_mode(BoundsMode::UseRasterizationScale).expect("put_bounds_mode");
-                        */
+                        controller.put_bounds(rect).expect("put_bounds");
+                        
                     }
 
-                    /*
-                    w.open_dev_tools_window().expect("open_dev_tools_window");
-                    w.navigate("http://10.0.7.140:3000/title")
-                        .expect("navigate");
-                    */
-                    w.navigate("https://whatismyviewport.com").ok();
+                    w.navigate("https://example.com/index.html").expect("navigate");
 
                     controller_clone.set(controller).unwrap();
                     Ok(())
@@ -115,14 +88,17 @@ fn main() {
                         let _ = webview_host.notify_parent_window_position_changed();
                     }
                 }
-
                 // Update webview bounds when the parent window is resized.
                 WindowEvent::Resized(new_size) => {
-                    set_bounds(
-                        controller.get().unwrap().clone(),
-                        new_size.width as i32,
-                        new_size.height as i32,
-                    );
+                    if let Some(webview_host) = controller.get() {
+                        let r = RECT {
+                            left: 0,
+                            top: 0,
+                            right: new_size.width as i32,
+                            bottom: new_size.height as i32,
+                        };
+                        webview_host.put_bounds(r).expect("put_bounds");
+                    }
                 }
                 _ => {}
             },

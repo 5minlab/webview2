@@ -101,8 +101,9 @@ fn main() {
                     let obj = host_object::FunctionWithStringArgument {
                         sender: sender.clone(),
                     };
-                    let message_obj =
-                        Box::new(host_object::Variant::from(ManuallyDrop::new(Some(IDispatch::from(obj)))));
+                    let message_obj = Box::new(host_object::Variant::from(ManuallyDrop::new(
+                        Some(IDispatch::from(obj)),
+                    )));
 
                     host_object::ensure_bind(
                         w.clone(),
@@ -122,7 +123,8 @@ fn main() {
                             sender0.send(msg).expect("mpsc::Sender::send");
                         }
                         Ok(())
-                    }).expect("add_web_message_received");
+                    })
+                    .expect("add_web_message_received");
 
                     w.navigate(url).expect("navigate");
                     w.open_dev_tools_window().expect("open_dev_tools_window");

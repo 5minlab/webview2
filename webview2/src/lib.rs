@@ -850,7 +850,6 @@ impl Controller3 {
     put!(put_bounds_mode, mode: BoundsMode);
 }
 
-
 impl WebView {
     pub fn get_settings(&self) -> Result<Settings> {
         let mut ppv: *mut *mut ICoreWebView2SettingsVTable = ptr::null_mut();
@@ -1084,6 +1083,7 @@ impl WebView {
         &self,
         uri: &str,
         resource_context: WebResourceContext,
+
     ) -> Result<()> {
         let uri = WideCString::from_str(uri)?;
         check_hresult(unsafe {
@@ -1096,6 +1096,55 @@ impl WebView {
         ICoreWebView2WindowCloseRequestedEventHandler
     );
     remove_event_handler!(remove_window_close_requested);
+
+    pub fn get_webview_2(&self) -> Result<WebView_2> {
+        let inner = self
+            .inner
+            .get_interface::<dyn ICoreWebView2_2>()
+            .ok_or_else(|| Error::new(E_NOINTERFACE))?;
+        Ok(WebView_2 { inner })
+    }
+
+    pub fn get_webview_3(&self) -> Result<WebView_3> {
+        let inner = self
+            .inner
+            .get_interface::<dyn ICoreWebView2_3>()
+            .ok_or_else(|| Error::new(E_NOINTERFACE))?;
+        Ok(WebView_3 { inner })
+    }
+}
+
+impl WebView_2 {
+    get_interface!(get_cookie_manager, CookieManager);
+    get_interface!(get_environment, Environment);
+}
+
+impl WebView_3 {
+    pub fn set_virtual_host_name_to_folder_mapping(
+        &self,
+        host_name: &str,
+        folder_path: &str,
+        access_kind: HostResourceAccessKind,
+    ) -> Result<()> {
+        let host_name = WideCString::from_str(host_name)?;
+        let folder_path = WideCString::from_str(folder_path)?;
+        check_hresult(unsafe {
+            self.inner
+                .set_virtual_host_name_to_folder_mapping(host_name.as_ptr(), folder_path.as_ptr(), access_kind)
+        })
+    }
+
+    pub fn clear_virtual_host_name_to_folder_mapping(
+        &self,
+        host_name: &str,
+    ) -> Result<()> {
+        let host_name = WideCString::from_str(host_name)?;
+        check_hresult(unsafe {
+            self.inner
+                .clear_virtual_host_name_to_folder_mapping(host_name.as_ptr())
+        })
+    }
+
 }
 
 impl Settings {
@@ -1133,11 +1182,65 @@ impl Settings {
             .ok_or_else(|| Error::new(E_NOINTERFACE))?;
         Ok(Settings2 { inner })
     }
+
+    pub fn get_settings3(&self) -> Result<Settings3> {
+        let inner = self
+            .inner
+            .get_interface::<dyn ICoreWebView2Settings3>()
+            .ok_or_else(|| Error::new(E_NOINTERFACE))?;
+        Ok(Settings3 { inner })
+    }
+
+    pub fn get_settings4(&self) -> Result<Settings4> {
+        let inner = self
+            .inner
+            .get_interface::<dyn ICoreWebView2Settings4>()
+            .ok_or_else(|| Error::new(E_NOINTERFACE))?;
+        Ok(Settings4 { inner })
+    }
+
+    pub fn get_settings5(&self) -> Result<Settings5> {
+        let inner = self
+            .inner
+            .get_interface::<dyn ICoreWebView2Settings5>()
+            .ok_or_else(|| Error::new(E_NOINTERFACE))?;
+        Ok(Settings5 { inner })
+    }
+
+    pub fn get_settings6(&self) -> Result<Settings6> {
+        let inner = self
+            .inner
+            .get_interface::<dyn ICoreWebView2Settings6>()
+            .ok_or_else(|| Error::new(E_NOINTERFACE))?;
+        Ok(Settings6 { inner })
+    }
 }
 
 impl Settings2 {
     get_string!(get_user_agent);
     put_string!(put_user_agent);
+}
+
+impl Settings3 {
+    get_bool!(get_are_browser_accelerator_keys_enabled);
+    put_bool!(put_are_browser_accelerator_keys_enabled);
+}
+
+impl Settings4 {
+    get_bool!(get_is_password_autosave_enabled);
+    put_bool!(put_is_password_autosave_enabled);
+    get_bool!(get_is_general_autofill_enabled);
+    put_bool!(put_is_general_autofill_enabled);
+}
+
+impl Settings5 {
+    get_bool!(get_is_pinch_zoom_enabled);
+    put_bool!(put_is_pinch_zoom_enabled);
+}
+
+impl Settings6 {
+    get_bool!(get_is_swipe_navigation_enabled);
+    put_bool!(put_is_swipe_navigation_enabled);
 }
 
 impl ContentLoadingEventArgs {
@@ -1474,9 +1577,9 @@ impl io::Seek for Stream {
 
 #[doc(inline)]
 pub use webview2_sys::{
-    CapturePreviewImageFormat, EventRegistrationToken, KeyEventKind, MoveFocusReason,
+    BoundsMode, CapturePreviewImageFormat, EventRegistrationToken, KeyEventKind, MoveFocusReason,
     PermissionKind, PermissionState, PhysicalKeyStatus, ProcessFailedKind, ScriptDialogKind,
-    WebErrorStatus, WebResourceContext, BoundsMode
+    WebErrorStatus, WebResourceContext, HostResourceAccessKind
 };
 
 /// WebView2 Error.

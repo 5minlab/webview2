@@ -1,7 +1,7 @@
-use std::mem::ManuallyDrop;
-use windows::core::*;
-use std::sync::mpsc;
 use crate::WebView;
+use std::mem::ManuallyDrop;
+use std::sync::mpsc;
+use windows::core::*;
 pub use windows::Win32::System::Com::IDispatch;
 
 use windows::Win32::System::{

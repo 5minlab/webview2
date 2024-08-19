@@ -37,9 +37,25 @@ pub unsafe extern "C" fn webview2_open(url_ptr: *const u16, len: u32) -> usize {
                 let w = controller.get_webview().expect("get_webview");
 
                 let _ = w.get_settings().map(|settings| {
-                    let _ = settings.put_is_status_bar_enabled(false);
-                    let _ = settings.put_are_default_context_menus_enabled(false);
-                    let _ = settings.put_is_zoom_control_enabled(false);
+                    settings.put_is_status_bar_enabled(false).unwrap();
+                    settings
+                        .put_are_default_context_menus_enabled(false)
+                        .unwrap();
+                    settings.put_is_zoom_control_enabled(false).unwrap();
+                    settings.put_is_built_in_error_page_enabled(false).unwrap();
+
+                    let s3 = settings.get_settings3().expect("get_settings3");
+                    s3.put_are_browser_accelerator_keys_enabled(false).unwrap();
+                    
+                    let s4 = settings.get_settings4().expect("get_settings4");
+                    s4.put_is_password_autosave_enabled(false).unwrap();
+                    s4.put_is_general_autofill_enabled(false).unwrap();
+
+                    let s5 = settings.get_settings5().expect("get_settings5");
+                    s5.put_is_pinch_zoom_enabled(false).unwrap();
+
+                    let s6 = settings.get_settings6().expect("get_settings6");
+                    s6.put_is_swipe_navigation_enabled(false).unwrap();
                 });
 
                 let r = RECT {
@@ -166,7 +182,9 @@ pub unsafe extern "C" fn webview2_update_position2(
     with_wrapper(ptr, |data| {
         let dpi = unsafe {
             winapi::um::winuser::GetDpiForWindow(
-                data.controller.get_parent_window().expect("get_host_window"),
+                data.controller
+                    .get_parent_window()
+                    .expect("get_host_window"),
             )
         };
 

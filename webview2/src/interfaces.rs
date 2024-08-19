@@ -120,6 +120,558 @@ impl WebView_5 {
     }
 }
 
+/// Wrapper for `ICoreWebView2_6`.
+#[derive(Clone)]
+pub struct _6 {
+    inner: ComRc<dyn ICoreWebView2_6>,
+}
+impl From<ComRc<dyn ICoreWebView2_6>> for _6 {
+    fn from(inner: ComRc<dyn ICoreWebView2_6>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _6 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_6").finish()
+    }
+}
+impl _6 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_6> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_6> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_7`.
+#[derive(Clone)]
+pub struct _7 {
+    inner: ComRc<dyn ICoreWebView2_7>,
+}
+impl From<ComRc<dyn ICoreWebView2_7>> for _7 {
+    fn from(inner: ComRc<dyn ICoreWebView2_7>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _7 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_7").finish()
+    }
+}
+impl _7 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_7> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_7> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_8`.
+#[derive(Clone)]
+pub struct _8 {
+    inner: ComRc<dyn ICoreWebView2_8>,
+}
+impl From<ComRc<dyn ICoreWebView2_8>> for _8 {
+    fn from(inner: ComRc<dyn ICoreWebView2_8>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _8 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_8").finish()
+    }
+}
+impl _8 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_8> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_8> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_9`.
+#[derive(Clone)]
+pub struct _9 {
+    inner: ComRc<dyn ICoreWebView2_9>,
+}
+impl From<ComRc<dyn ICoreWebView2_9>> for _9 {
+    fn from(inner: ComRc<dyn ICoreWebView2_9>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _9 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_9").finish()
+    }
+}
+impl _9 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_9> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_9> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_10`.
+#[derive(Clone)]
+pub struct _10 {
+    inner: ComRc<dyn ICoreWebView2_10>,
+}
+impl From<ComRc<dyn ICoreWebView2_10>> for _10 {
+    fn from(inner: ComRc<dyn ICoreWebView2_10>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _10 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_10").finish()
+    }
+}
+impl _10 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_10> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_10> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_11`.
+#[derive(Clone)]
+pub struct _11 {
+    inner: ComRc<dyn ICoreWebView2_11>,
+}
+impl From<ComRc<dyn ICoreWebView2_11>> for _11 {
+    fn from(inner: ComRc<dyn ICoreWebView2_11>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _11 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_11").finish()
+    }
+}
+impl _11 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_11> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_11> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_12`.
+#[derive(Clone)]
+pub struct _12 {
+    inner: ComRc<dyn ICoreWebView2_12>,
+}
+impl From<ComRc<dyn ICoreWebView2_12>> for _12 {
+    fn from(inner: ComRc<dyn ICoreWebView2_12>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _12 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_12").finish()
+    }
+}
+impl _12 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_12> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_12> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_13`.
+#[derive(Clone)]
+pub struct _13 {
+    inner: ComRc<dyn ICoreWebView2_13>,
+}
+impl From<ComRc<dyn ICoreWebView2_13>> for _13 {
+    fn from(inner: ComRc<dyn ICoreWebView2_13>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _13 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_13").finish()
+    }
+}
+impl _13 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_13> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_13> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_14`.
+#[derive(Clone)]
+pub struct _14 {
+    inner: ComRc<dyn ICoreWebView2_14>,
+}
+impl From<ComRc<dyn ICoreWebView2_14>> for _14 {
+    fn from(inner: ComRc<dyn ICoreWebView2_14>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _14 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_14").finish()
+    }
+}
+impl _14 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_14> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_14> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_15`.
+#[derive(Clone)]
+pub struct _15 {
+    inner: ComRc<dyn ICoreWebView2_15>,
+}
+impl From<ComRc<dyn ICoreWebView2_15>> for _15 {
+    fn from(inner: ComRc<dyn ICoreWebView2_15>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _15 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_15").finish()
+    }
+}
+impl _15 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_15> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_15> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_16`.
+#[derive(Clone)]
+pub struct _16 {
+    inner: ComRc<dyn ICoreWebView2_16>,
+}
+impl From<ComRc<dyn ICoreWebView2_16>> for _16 {
+    fn from(inner: ComRc<dyn ICoreWebView2_16>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _16 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_16").finish()
+    }
+}
+impl _16 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_16> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_16> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_17`.
+#[derive(Clone)]
+pub struct _17 {
+    inner: ComRc<dyn ICoreWebView2_17>,
+}
+impl From<ComRc<dyn ICoreWebView2_17>> for _17 {
+    fn from(inner: ComRc<dyn ICoreWebView2_17>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _17 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_17").finish()
+    }
+}
+impl _17 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_17> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_17> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2PrintSettings2`.
+#[derive(Clone)]
+pub struct PrintSettings2 {
+    inner: ComRc<dyn ICoreWebView2PrintSettings2>,
+}
+impl From<ComRc<dyn ICoreWebView2PrintSettings2>> for PrintSettings2 {
+    fn from(inner: ComRc<dyn ICoreWebView2PrintSettings2>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for PrintSettings2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PrintSettings2").finish()
+    }
+}
+impl PrintSettings2 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2PrintSettings2> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2PrintSettings2> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_18`.
+#[derive(Clone)]
+pub struct _18 {
+    inner: ComRc<dyn ICoreWebView2_18>,
+}
+impl From<ComRc<dyn ICoreWebView2_18>> for _18 {
+    fn from(inner: ComRc<dyn ICoreWebView2_18>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _18 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_18").finish()
+    }
+}
+impl _18 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_18> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_18> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_19`.
+#[derive(Clone)]
+pub struct _19 {
+    inner: ComRc<dyn ICoreWebView2_19>,
+}
+impl From<ComRc<dyn ICoreWebView2_19>> for _19 {
+    fn from(inner: ComRc<dyn ICoreWebView2_19>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _19 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_19").finish()
+    }
+}
+impl _19 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_19> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_19> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_20`.
+#[derive(Clone)]
+pub struct _20 {
+    inner: ComRc<dyn ICoreWebView2_20>,
+}
+impl From<ComRc<dyn ICoreWebView2_20>> for _20 {
+    fn from(inner: ComRc<dyn ICoreWebView2_20>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _20 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_20").finish()
+    }
+}
+impl _20 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_20> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_20> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_21`.
+#[derive(Clone)]
+pub struct _21 {
+    inner: ComRc<dyn ICoreWebView2_21>,
+}
+impl From<ComRc<dyn ICoreWebView2_21>> for _21 {
+    fn from(inner: ComRc<dyn ICoreWebView2_21>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _21 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_21").finish()
+    }
+}
+impl _21 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_21> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_21> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2ScriptException`.
+#[derive(Clone)]
+pub struct ScriptException {
+    inner: ComRc<dyn ICoreWebView2ScriptException>,
+}
+impl From<ComRc<dyn ICoreWebView2ScriptException>> for ScriptException {
+    fn from(inner: ComRc<dyn ICoreWebView2ScriptException>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for ScriptException {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ScriptException").finish()
+    }
+}
+impl ScriptException {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2ScriptException> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2ScriptException> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2ExecuteScriptResult`.
+#[derive(Clone)]
+pub struct ExecuteScriptResult {
+    inner: ComRc<dyn ICoreWebView2ExecuteScriptResult>,
+}
+impl From<ComRc<dyn ICoreWebView2ExecuteScriptResult>> for ExecuteScriptResult {
+    fn from(inner: ComRc<dyn ICoreWebView2ExecuteScriptResult>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for ExecuteScriptResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExecuteScriptResult").finish()
+    }
+}
+impl ExecuteScriptResult {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2ExecuteScriptResult> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2ExecuteScriptResult> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2_22`.
+#[derive(Clone)]
+pub struct _22 {
+    inner: ComRc<dyn ICoreWebView2_22>,
+}
+impl From<ComRc<dyn ICoreWebView2_22>> for _22 {
+    fn from(inner: ComRc<dyn ICoreWebView2_22>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for _22 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_22").finish()
+    }
+}
+impl _22 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2_22> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2_22> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2WebResourceRequestedEventArgs2`.
+#[derive(Clone)]
+pub struct WebResourceRequestedEventArgs2 {
+    inner: ComRc<dyn ICoreWebView2WebResourceRequestedEventArgs2>,
+}
+impl From<ComRc<dyn ICoreWebView2WebResourceRequestedEventArgs2>> for WebResourceRequestedEventArgs2 {
+    fn from(inner: ComRc<dyn ICoreWebView2WebResourceRequestedEventArgs2>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for WebResourceRequestedEventArgs2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WebResourceRequestedEventArgs2").finish()
+    }
+}
+impl WebResourceRequestedEventArgs2 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2WebResourceRequestedEventArgs2> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2WebResourceRequestedEventArgs2> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2LaunchingExternalUriSchemeEventArgs`.
+#[derive(Clone)]
+pub struct LaunchingExternalUriSchemeEventArgs {
+    inner: ComRc<dyn ICoreWebView2LaunchingExternalUriSchemeEventArgs>,
+}
+impl From<ComRc<dyn ICoreWebView2LaunchingExternalUriSchemeEventArgs>> for LaunchingExternalUriSchemeEventArgs {
+    fn from(inner: ComRc<dyn ICoreWebView2LaunchingExternalUriSchemeEventArgs>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for LaunchingExternalUriSchemeEventArgs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("LaunchingExternalUriSchemeEventArgs").finish()
+    }
+}
+impl LaunchingExternalUriSchemeEventArgs {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2LaunchingExternalUriSchemeEventArgs> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2LaunchingExternalUriSchemeEventArgs> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2PrintSettings`.
+#[derive(Clone)]
+pub struct PrintSettings {
+    inner: ComRc<dyn ICoreWebView2PrintSettings>,
+}
+impl From<ComRc<dyn ICoreWebView2PrintSettings>> for PrintSettings {
+    fn from(inner: ComRc<dyn ICoreWebView2PrintSettings>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for PrintSettings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PrintSettings").finish()
+    }
+}
+impl PrintSettings {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2PrintSettings> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2PrintSettings> {
+        &self.inner
+    }
+}
+
 /// Wrapper for `ICoreWebView2Controller`.
 #[derive(Clone)]
 pub struct Controller {
@@ -192,6 +744,30 @@ impl Controller3 {
     }
 }
 
+/// Wrapper for `ICoreWebView2Controller4`.
+#[derive(Clone)]
+pub struct Controller4 {
+    inner: ComRc<dyn ICoreWebView2Controller4>,
+}
+impl From<ComRc<dyn ICoreWebView2Controller4>> for Controller4 {
+    fn from(inner: ComRc<dyn ICoreWebView2Controller4>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Controller4 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Controller4").finish()
+    }
+}
+impl Controller4 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Controller4> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Controller4> {
+        &self.inner
+    }
+}
+
 /// Wrapper for `ICoreWebView2CompositionController`.
 #[derive(Clone)]
 pub struct CompositionController {
@@ -236,6 +812,54 @@ impl CompositionController2 {
         self.inner
     }
     pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2CompositionController2> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2CompositionController3`.
+#[derive(Clone)]
+pub struct CompositionController3 {
+    inner: ComRc<dyn ICoreWebView2CompositionController3>,
+}
+impl From<ComRc<dyn ICoreWebView2CompositionController3>> for CompositionController3 {
+    fn from(inner: ComRc<dyn ICoreWebView2CompositionController3>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for CompositionController3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CompositionController3").finish()
+    }
+}
+impl CompositionController3 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2CompositionController3> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2CompositionController3> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2CompositionController4`.
+#[derive(Clone)]
+pub struct CompositionController4 {
+    inner: ComRc<dyn ICoreWebView2CompositionController4>,
+}
+impl From<ComRc<dyn ICoreWebView2CompositionController4>> for CompositionController4 {
+    fn from(inner: ComRc<dyn ICoreWebView2CompositionController4>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for CompositionController4 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CompositionController4").finish()
+    }
+}
+impl CompositionController4 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2CompositionController4> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2CompositionController4> {
         &self.inner
     }
 }
@@ -380,6 +1004,102 @@ impl Settings5 {
         self.inner
     }
     pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Settings5> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Settings6`.
+#[derive(Clone)]
+pub struct Settings6 {
+    inner: ComRc<dyn ICoreWebView2Settings6>,
+}
+impl From<ComRc<dyn ICoreWebView2Settings6>> for Settings6 {
+    fn from(inner: ComRc<dyn ICoreWebView2Settings6>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Settings6 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Settings6").finish()
+    }
+}
+impl Settings6 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Settings6> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Settings6> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Settings7`.
+#[derive(Clone)]
+pub struct Settings7 {
+    inner: ComRc<dyn ICoreWebView2Settings7>,
+}
+impl From<ComRc<dyn ICoreWebView2Settings7>> for Settings7 {
+    fn from(inner: ComRc<dyn ICoreWebView2Settings7>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Settings7 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Settings7").finish()
+    }
+}
+impl Settings7 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Settings7> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Settings7> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Settings8`.
+#[derive(Clone)]
+pub struct Settings8 {
+    inner: ComRc<dyn ICoreWebView2Settings8>,
+}
+impl From<ComRc<dyn ICoreWebView2Settings8>> for Settings8 {
+    fn from(inner: ComRc<dyn ICoreWebView2Settings8>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Settings8 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Settings8").finish()
+    }
+}
+impl Settings8 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Settings8> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Settings8> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Settings9`.
+#[derive(Clone)]
+pub struct Settings9 {
+    inner: ComRc<dyn ICoreWebView2Settings9>,
+}
+impl From<ComRc<dyn ICoreWebView2Settings9>> for Settings9 {
+    fn from(inner: ComRc<dyn ICoreWebView2Settings9>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Settings9 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Settings9").finish()
+    }
+}
+impl Settings9 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Settings9> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Settings9> {
         &self.inner
     }
 }
@@ -552,6 +1272,54 @@ impl NavigationStartingEventArgs {
     }
 }
 
+/// Wrapper for `ICoreWebView2NavigationStartingEventArgs2`.
+#[derive(Clone)]
+pub struct NavigationStartingEventArgs2 {
+    inner: ComRc<dyn ICoreWebView2NavigationStartingEventArgs2>,
+}
+impl From<ComRc<dyn ICoreWebView2NavigationStartingEventArgs2>> for NavigationStartingEventArgs2 {
+    fn from(inner: ComRc<dyn ICoreWebView2NavigationStartingEventArgs2>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for NavigationStartingEventArgs2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("NavigationStartingEventArgs2").finish()
+    }
+}
+impl NavigationStartingEventArgs2 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2NavigationStartingEventArgs2> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2NavigationStartingEventArgs2> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2NavigationStartingEventArgs3`.
+#[derive(Clone)]
+pub struct NavigationStartingEventArgs3 {
+    inner: ComRc<dyn ICoreWebView2NavigationStartingEventArgs3>,
+}
+impl From<ComRc<dyn ICoreWebView2NavigationStartingEventArgs3>> for NavigationStartingEventArgs3 {
+    fn from(inner: ComRc<dyn ICoreWebView2NavigationStartingEventArgs3>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for NavigationStartingEventArgs3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("NavigationStartingEventArgs3").finish()
+    }
+}
+impl NavigationStartingEventArgs3 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2NavigationStartingEventArgs3> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2NavigationStartingEventArgs3> {
+        &self.inner
+    }
+}
+
 /// Wrapper for `ICoreWebView2ContentLoadingEventArgs`.
 #[derive(Clone)]
 pub struct ContentLoadingEventArgs {
@@ -644,6 +1412,30 @@ impl NavigationCompletedEventArgs {
         self.inner
     }
     pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2NavigationCompletedEventArgs> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2NavigationCompletedEventArgs2`.
+#[derive(Clone)]
+pub struct NavigationCompletedEventArgs2 {
+    inner: ComRc<dyn ICoreWebView2NavigationCompletedEventArgs2>,
+}
+impl From<ComRc<dyn ICoreWebView2NavigationCompletedEventArgs2>> for NavigationCompletedEventArgs2 {
+    fn from(inner: ComRc<dyn ICoreWebView2NavigationCompletedEventArgs2>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for NavigationCompletedEventArgs2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("NavigationCompletedEventArgs2").finish()
+    }
+}
+impl NavigationCompletedEventArgs2 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2NavigationCompletedEventArgs2> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2NavigationCompletedEventArgs2> {
         &self.inner
     }
 }
@@ -749,17 +1541,14 @@ impl WebMessageReceivedEventArgs {
 pub struct DevToolsProtocolEventReceivedEventArgs {
     inner: ComRc<dyn ICoreWebView2DevToolsProtocolEventReceivedEventArgs>,
 }
-impl From<ComRc<dyn ICoreWebView2DevToolsProtocolEventReceivedEventArgs>>
-    for DevToolsProtocolEventReceivedEventArgs
-{
+impl From<ComRc<dyn ICoreWebView2DevToolsProtocolEventReceivedEventArgs>> for DevToolsProtocolEventReceivedEventArgs {
     fn from(inner: ComRc<dyn ICoreWebView2DevToolsProtocolEventReceivedEventArgs>) -> Self {
         Self { inner }
     }
 }
 impl fmt::Debug for DevToolsProtocolEventReceivedEventArgs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("DevToolsProtocolEventReceivedEventArgs")
-            .finish()
+        f.debug_struct("DevToolsProtocolEventReceivedEventArgs").finish()
     }
 }
 impl DevToolsProtocolEventReceivedEventArgs {
@@ -767,6 +1556,30 @@ impl DevToolsProtocolEventReceivedEventArgs {
         self.inner
     }
     pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2DevToolsProtocolEventReceivedEventArgs> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2DevToolsProtocolEventReceivedEventArgs2`.
+#[derive(Clone)]
+pub struct DevToolsProtocolEventReceivedEventArgs2 {
+    inner: ComRc<dyn ICoreWebView2DevToolsProtocolEventReceivedEventArgs2>,
+}
+impl From<ComRc<dyn ICoreWebView2DevToolsProtocolEventReceivedEventArgs2>> for DevToolsProtocolEventReceivedEventArgs2 {
+    fn from(inner: ComRc<dyn ICoreWebView2DevToolsProtocolEventReceivedEventArgs2>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for DevToolsProtocolEventReceivedEventArgs2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DevToolsProtocolEventReceivedEventArgs2").finish()
+    }
+}
+impl DevToolsProtocolEventReceivedEventArgs2 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2DevToolsProtocolEventReceivedEventArgs2> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2DevToolsProtocolEventReceivedEventArgs2> {
         &self.inner
     }
 }
@@ -791,6 +1604,30 @@ impl NewWindowRequestedEventArgs {
         self.inner
     }
     pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2NewWindowRequestedEventArgs> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2NewWindowRequestedEventArgs2`.
+#[derive(Clone)]
+pub struct NewWindowRequestedEventArgs2 {
+    inner: ComRc<dyn ICoreWebView2NewWindowRequestedEventArgs2>,
+}
+impl From<ComRc<dyn ICoreWebView2NewWindowRequestedEventArgs2>> for NewWindowRequestedEventArgs2 {
+    fn from(inner: ComRc<dyn ICoreWebView2NewWindowRequestedEventArgs2>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for NewWindowRequestedEventArgs2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("NewWindowRequestedEventArgs2").finish()
+    }
+}
+impl NewWindowRequestedEventArgs2 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2NewWindowRequestedEventArgs2> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2NewWindowRequestedEventArgs2> {
         &self.inner
     }
 }
@@ -824,9 +1661,7 @@ impl WindowFeatures {
 pub struct AcceleratorKeyPressedEventArgs {
     inner: ComRc<dyn ICoreWebView2AcceleratorKeyPressedEventArgs>,
 }
-impl From<ComRc<dyn ICoreWebView2AcceleratorKeyPressedEventArgs>>
-    for AcceleratorKeyPressedEventArgs
-{
+impl From<ComRc<dyn ICoreWebView2AcceleratorKeyPressedEventArgs>> for AcceleratorKeyPressedEventArgs {
     fn from(inner: ComRc<dyn ICoreWebView2AcceleratorKeyPressedEventArgs>) -> Self {
         Self { inner }
     }
@@ -845,22 +1680,67 @@ impl AcceleratorKeyPressedEventArgs {
     }
 }
 
+/// Wrapper for `ICoreWebView2AcceleratorKeyPressedEventArgs2`.
+#[derive(Clone)]
+pub struct AcceleratorKeyPressedEventArgs2 {
+    inner: ComRc<dyn ICoreWebView2AcceleratorKeyPressedEventArgs2>,
+}
+impl From<ComRc<dyn ICoreWebView2AcceleratorKeyPressedEventArgs2>> for AcceleratorKeyPressedEventArgs2 {
+    fn from(inner: ComRc<dyn ICoreWebView2AcceleratorKeyPressedEventArgs2>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for AcceleratorKeyPressedEventArgs2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AcceleratorKeyPressedEventArgs2").finish()
+    }
+}
+impl AcceleratorKeyPressedEventArgs2 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2AcceleratorKeyPressedEventArgs2> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2AcceleratorKeyPressedEventArgs2> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2BrowserProcessExitedEventArgs`.
+#[derive(Clone)]
+pub struct BrowserProcessExitedEventArgs {
+    inner: ComRc<dyn ICoreWebView2BrowserProcessExitedEventArgs>,
+}
+impl From<ComRc<dyn ICoreWebView2BrowserProcessExitedEventArgs>> for BrowserProcessExitedEventArgs {
+    fn from(inner: ComRc<dyn ICoreWebView2BrowserProcessExitedEventArgs>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for BrowserProcessExitedEventArgs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BrowserProcessExitedEventArgs").finish()
+    }
+}
+impl BrowserProcessExitedEventArgs {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2BrowserProcessExitedEventArgs> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2BrowserProcessExitedEventArgs> {
+        &self.inner
+    }
+}
+
 /// Wrapper for `ICoreWebView2WebResourceResponseReceivedEventArgs`.
 #[derive(Clone)]
 pub struct WebResourceResponseReceivedEventArgs {
     inner: ComRc<dyn ICoreWebView2WebResourceResponseReceivedEventArgs>,
 }
-impl From<ComRc<dyn ICoreWebView2WebResourceResponseReceivedEventArgs>>
-    for WebResourceResponseReceivedEventArgs
-{
+impl From<ComRc<dyn ICoreWebView2WebResourceResponseReceivedEventArgs>> for WebResourceResponseReceivedEventArgs {
     fn from(inner: ComRc<dyn ICoreWebView2WebResourceResponseReceivedEventArgs>) -> Self {
         Self { inner }
     }
 }
 impl fmt::Debug for WebResourceResponseReceivedEventArgs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("WebResourceResponseReceivedEventArgs")
-            .finish()
+        f.debug_struct("WebResourceResponseReceivedEventArgs").finish()
     }
 }
 impl WebResourceResponseReceivedEventArgs {
@@ -1069,17 +1949,14 @@ impl StringCollection {
 pub struct ClientCertificateRequestedEventArgs {
     inner: ComRc<dyn ICoreWebView2ClientCertificateRequestedEventArgs>,
 }
-impl From<ComRc<dyn ICoreWebView2ClientCertificateRequestedEventArgs>>
-    for ClientCertificateRequestedEventArgs
-{
+impl From<ComRc<dyn ICoreWebView2ClientCertificateRequestedEventArgs>> for ClientCertificateRequestedEventArgs {
     fn from(inner: ComRc<dyn ICoreWebView2ClientCertificateRequestedEventArgs>) -> Self {
         Self { inner }
     }
 }
 impl fmt::Debug for ClientCertificateRequestedEventArgs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ClientCertificateRequestedEventArgs")
-            .finish()
+        f.debug_struct("ClientCertificateRequestedEventArgs").finish()
     }
 }
 impl ClientCertificateRequestedEventArgs {
@@ -1211,6 +2088,198 @@ impl Environment4 {
     }
 }
 
+/// Wrapper for `ICoreWebView2Environment5`.
+#[derive(Clone)]
+pub struct Environment5 {
+    inner: ComRc<dyn ICoreWebView2Environment5>,
+}
+impl From<ComRc<dyn ICoreWebView2Environment5>> for Environment5 {
+    fn from(inner: ComRc<dyn ICoreWebView2Environment5>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Environment5 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Environment5").finish()
+    }
+}
+impl Environment5 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Environment5> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Environment5> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Environment6`.
+#[derive(Clone)]
+pub struct Environment6 {
+    inner: ComRc<dyn ICoreWebView2Environment6>,
+}
+impl From<ComRc<dyn ICoreWebView2Environment6>> for Environment6 {
+    fn from(inner: ComRc<dyn ICoreWebView2Environment6>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Environment6 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Environment6").finish()
+    }
+}
+impl Environment6 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Environment6> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Environment6> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Environment7`.
+#[derive(Clone)]
+pub struct Environment7 {
+    inner: ComRc<dyn ICoreWebView2Environment7>,
+}
+impl From<ComRc<dyn ICoreWebView2Environment7>> for Environment7 {
+    fn from(inner: ComRc<dyn ICoreWebView2Environment7>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Environment7 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Environment7").finish()
+    }
+}
+impl Environment7 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Environment7> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Environment7> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Environment8`.
+#[derive(Clone)]
+pub struct Environment8 {
+    inner: ComRc<dyn ICoreWebView2Environment8>,
+}
+impl From<ComRc<dyn ICoreWebView2Environment8>> for Environment8 {
+    fn from(inner: ComRc<dyn ICoreWebView2Environment8>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Environment8 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Environment8").finish()
+    }
+}
+impl Environment8 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Environment8> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Environment8> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2ProcessInfo`.
+#[derive(Clone)]
+pub struct ProcessInfo {
+    inner: ComRc<dyn ICoreWebView2ProcessInfo>,
+}
+impl From<ComRc<dyn ICoreWebView2ProcessInfo>> for ProcessInfo {
+    fn from(inner: ComRc<dyn ICoreWebView2ProcessInfo>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for ProcessInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ProcessInfo").finish()
+    }
+}
+impl ProcessInfo {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2ProcessInfo> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2ProcessInfo> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Environment9`.
+#[derive(Clone)]
+pub struct Environment9 {
+    inner: ComRc<dyn ICoreWebView2Environment9>,
+}
+impl From<ComRc<dyn ICoreWebView2Environment9>> for Environment9 {
+    fn from(inner: ComRc<dyn ICoreWebView2Environment9>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Environment9 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Environment9").finish()
+    }
+}
+impl Environment9 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Environment9> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Environment9> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Environment10`.
+#[derive(Clone)]
+pub struct Environment10 {
+    inner: ComRc<dyn ICoreWebView2Environment10>,
+}
+impl From<ComRc<dyn ICoreWebView2Environment10>> for Environment10 {
+    fn from(inner: ComRc<dyn ICoreWebView2Environment10>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Environment10 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Environment10").finish()
+    }
+}
+impl Environment10 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Environment10> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Environment10> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2ProcessInfoCollection`.
+#[derive(Clone)]
+pub struct ProcessInfoCollection {
+    inner: ComRc<dyn ICoreWebView2ProcessInfoCollection>,
+}
+impl From<ComRc<dyn ICoreWebView2ProcessInfoCollection>> for ProcessInfoCollection {
+    fn from(inner: ComRc<dyn ICoreWebView2ProcessInfoCollection>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for ProcessInfoCollection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ProcessInfoCollection").finish()
+    }
+}
+impl ProcessInfoCollection {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2ProcessInfoCollection> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2ProcessInfoCollection> {
+        &self.inner
+    }
+}
+
 /// Wrapper for `ICoreWebView2EnvironmentOptions`.
 #[derive(Clone)]
 pub struct EnvironmentOptions {
@@ -1231,6 +2300,198 @@ impl EnvironmentOptions {
         self.inner
     }
     pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2EnvironmentOptions> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2EnvironmentOptions2`.
+#[derive(Clone)]
+pub struct EnvironmentOptions2 {
+    inner: ComRc<dyn ICoreWebView2EnvironmentOptions2>,
+}
+impl From<ComRc<dyn ICoreWebView2EnvironmentOptions2>> for EnvironmentOptions2 {
+    fn from(inner: ComRc<dyn ICoreWebView2EnvironmentOptions2>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for EnvironmentOptions2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("EnvironmentOptions2").finish()
+    }
+}
+impl EnvironmentOptions2 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2EnvironmentOptions2> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2EnvironmentOptions2> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2EnvironmentOptions3`.
+#[derive(Clone)]
+pub struct EnvironmentOptions3 {
+    inner: ComRc<dyn ICoreWebView2EnvironmentOptions3>,
+}
+impl From<ComRc<dyn ICoreWebView2EnvironmentOptions3>> for EnvironmentOptions3 {
+    fn from(inner: ComRc<dyn ICoreWebView2EnvironmentOptions3>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for EnvironmentOptions3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("EnvironmentOptions3").finish()
+    }
+}
+impl EnvironmentOptions3 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2EnvironmentOptions3> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2EnvironmentOptions3> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2EnvironmentOptions4`.
+#[derive(Clone)]
+pub struct EnvironmentOptions4 {
+    inner: ComRc<dyn ICoreWebView2EnvironmentOptions4>,
+}
+impl From<ComRc<dyn ICoreWebView2EnvironmentOptions4>> for EnvironmentOptions4 {
+    fn from(inner: ComRc<dyn ICoreWebView2EnvironmentOptions4>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for EnvironmentOptions4 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("EnvironmentOptions4").finish()
+    }
+}
+impl EnvironmentOptions4 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2EnvironmentOptions4> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2EnvironmentOptions4> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2EnvironmentOptions5`.
+#[derive(Clone)]
+pub struct EnvironmentOptions5 {
+    inner: ComRc<dyn ICoreWebView2EnvironmentOptions5>,
+}
+impl From<ComRc<dyn ICoreWebView2EnvironmentOptions5>> for EnvironmentOptions5 {
+    fn from(inner: ComRc<dyn ICoreWebView2EnvironmentOptions5>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for EnvironmentOptions5 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("EnvironmentOptions5").finish()
+    }
+}
+impl EnvironmentOptions5 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2EnvironmentOptions5> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2EnvironmentOptions5> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2EnvironmentOptions6`.
+#[derive(Clone)]
+pub struct EnvironmentOptions6 {
+    inner: ComRc<dyn ICoreWebView2EnvironmentOptions6>,
+}
+impl From<ComRc<dyn ICoreWebView2EnvironmentOptions6>> for EnvironmentOptions6 {
+    fn from(inner: ComRc<dyn ICoreWebView2EnvironmentOptions6>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for EnvironmentOptions6 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("EnvironmentOptions6").finish()
+    }
+}
+impl EnvironmentOptions6 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2EnvironmentOptions6> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2EnvironmentOptions6> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2EnvironmentOptions8`.
+#[derive(Clone)]
+pub struct EnvironmentOptions8 {
+    inner: ComRc<dyn ICoreWebView2EnvironmentOptions8>,
+}
+impl From<ComRc<dyn ICoreWebView2EnvironmentOptions8>> for EnvironmentOptions8 {
+    fn from(inner: ComRc<dyn ICoreWebView2EnvironmentOptions8>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for EnvironmentOptions8 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("EnvironmentOptions8").finish()
+    }
+}
+impl EnvironmentOptions8 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2EnvironmentOptions8> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2EnvironmentOptions8> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Environment11`.
+#[derive(Clone)]
+pub struct Environment11 {
+    inner: ComRc<dyn ICoreWebView2Environment11>,
+}
+impl From<ComRc<dyn ICoreWebView2Environment11>> for Environment11 {
+    fn from(inner: ComRc<dyn ICoreWebView2Environment11>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Environment11 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Environment11").finish()
+    }
+}
+impl Environment11 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Environment11> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Environment11> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Environment12`.
+#[derive(Clone)]
+pub struct Environment12 {
+    inner: ComRc<dyn ICoreWebView2Environment12>,
+}
+impl From<ComRc<dyn ICoreWebView2Environment12>> for Environment12 {
+    fn from(inner: ComRc<dyn ICoreWebView2Environment12>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Environment12 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Environment12").finish()
+    }
+}
+impl Environment12 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Environment12> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Environment12> {
         &self.inner
     }
 }
@@ -1259,6 +2520,78 @@ impl DevToolsProtocolEventReceiver {
     }
 }
 
+/// Wrapper for `ICoreWebView2Environment13`.
+#[derive(Clone)]
+pub struct Environment13 {
+    inner: ComRc<dyn ICoreWebView2Environment13>,
+}
+impl From<ComRc<dyn ICoreWebView2Environment13>> for Environment13 {
+    fn from(inner: ComRc<dyn ICoreWebView2Environment13>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Environment13 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Environment13").finish()
+    }
+}
+impl Environment13 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Environment13> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Environment13> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2ProcessExtendedInfo`.
+#[derive(Clone)]
+pub struct ProcessExtendedInfo {
+    inner: ComRc<dyn ICoreWebView2ProcessExtendedInfo>,
+}
+impl From<ComRc<dyn ICoreWebView2ProcessExtendedInfo>> for ProcessExtendedInfo {
+    fn from(inner: ComRc<dyn ICoreWebView2ProcessExtendedInfo>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for ProcessExtendedInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ProcessExtendedInfo").finish()
+    }
+}
+impl ProcessExtendedInfo {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2ProcessExtendedInfo> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2ProcessExtendedInfo> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2ProcessExtendedInfoCollection`.
+#[derive(Clone)]
+pub struct ProcessExtendedInfoCollection {
+    inner: ComRc<dyn ICoreWebView2ProcessExtendedInfoCollection>,
+}
+impl From<ComRc<dyn ICoreWebView2ProcessExtendedInfoCollection>> for ProcessExtendedInfoCollection {
+    fn from(inner: ComRc<dyn ICoreWebView2ProcessExtendedInfoCollection>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for ProcessExtendedInfoCollection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ProcessExtendedInfoCollection").finish()
+    }
+}
+impl ProcessExtendedInfoCollection {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2ProcessExtendedInfoCollection> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2ProcessExtendedInfoCollection> {
+        &self.inner
+    }
+}
+
 /// Wrapper for `ICoreWebView2Frame`.
 #[derive(Clone)]
 pub struct Frame {
@@ -1279,6 +2612,30 @@ impl Frame {
         self.inner
     }
     pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Frame> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Frame2`.
+#[derive(Clone)]
+pub struct Frame2 {
+    inner: ComRc<dyn ICoreWebView2Frame2>,
+}
+impl From<ComRc<dyn ICoreWebView2Frame2>> for Frame2 {
+    fn from(inner: ComRc<dyn ICoreWebView2Frame2>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Frame2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Frame2").finish()
+    }
+}
+impl Frame2 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Frame2> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Frame2> {
         &self.inner
     }
 }
@@ -1451,6 +2808,918 @@ impl FrameInfo {
     }
 }
 
+/// Wrapper for `ICoreWebView2FrameInfo2`.
+#[derive(Clone)]
+pub struct FrameInfo2 {
+    inner: ComRc<dyn ICoreWebView2FrameInfo2>,
+}
+impl From<ComRc<dyn ICoreWebView2FrameInfo2>> for FrameInfo2 {
+    fn from(inner: ComRc<dyn ICoreWebView2FrameInfo2>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for FrameInfo2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FrameInfo2").finish()
+    }
+}
+impl FrameInfo2 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2FrameInfo2> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2FrameInfo2> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2BasicAuthenticationResponse`.
+#[derive(Clone)]
+pub struct BasicAuthenticationResponse {
+    inner: ComRc<dyn ICoreWebView2BasicAuthenticationResponse>,
+}
+impl From<ComRc<dyn ICoreWebView2BasicAuthenticationResponse>> for BasicAuthenticationResponse {
+    fn from(inner: ComRc<dyn ICoreWebView2BasicAuthenticationResponse>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for BasicAuthenticationResponse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BasicAuthenticationResponse").finish()
+    }
+}
+impl BasicAuthenticationResponse {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2BasicAuthenticationResponse> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2BasicAuthenticationResponse> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2BasicAuthenticationRequestedEventArgs`.
+#[derive(Clone)]
+pub struct BasicAuthenticationRequestedEventArgs {
+    inner: ComRc<dyn ICoreWebView2BasicAuthenticationRequestedEventArgs>,
+}
+impl From<ComRc<dyn ICoreWebView2BasicAuthenticationRequestedEventArgs>> for BasicAuthenticationRequestedEventArgs {
+    fn from(inner: ComRc<dyn ICoreWebView2BasicAuthenticationRequestedEventArgs>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for BasicAuthenticationRequestedEventArgs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BasicAuthenticationRequestedEventArgs").finish()
+    }
+}
+impl BasicAuthenticationRequestedEventArgs {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2BasicAuthenticationRequestedEventArgs> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2BasicAuthenticationRequestedEventArgs> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Frame3`.
+#[derive(Clone)]
+pub struct Frame3 {
+    inner: ComRc<dyn ICoreWebView2Frame3>,
+}
+impl From<ComRc<dyn ICoreWebView2Frame3>> for Frame3 {
+    fn from(inner: ComRc<dyn ICoreWebView2Frame3>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Frame3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Frame3").finish()
+    }
+}
+impl Frame3 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Frame3> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Frame3> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Frame4`.
+#[derive(Clone)]
+pub struct Frame4 {
+    inner: ComRc<dyn ICoreWebView2Frame4>,
+}
+impl From<ComRc<dyn ICoreWebView2Frame4>> for Frame4 {
+    fn from(inner: ComRc<dyn ICoreWebView2Frame4>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Frame4 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Frame4").finish()
+    }
+}
+impl Frame4 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Frame4> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Frame4> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Frame5`.
+#[derive(Clone)]
+pub struct Frame5 {
+    inner: ComRc<dyn ICoreWebView2Frame5>,
+}
+impl From<ComRc<dyn ICoreWebView2Frame5>> for Frame5 {
+    fn from(inner: ComRc<dyn ICoreWebView2Frame5>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Frame5 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Frame5").finish()
+    }
+}
+impl Frame5 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Frame5> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Frame5> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2PermissionRequestedEventArgs2`.
+#[derive(Clone)]
+pub struct PermissionRequestedEventArgs2 {
+    inner: ComRc<dyn ICoreWebView2PermissionRequestedEventArgs2>,
+}
+impl From<ComRc<dyn ICoreWebView2PermissionRequestedEventArgs2>> for PermissionRequestedEventArgs2 {
+    fn from(inner: ComRc<dyn ICoreWebView2PermissionRequestedEventArgs2>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for PermissionRequestedEventArgs2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PermissionRequestedEventArgs2").finish()
+    }
+}
+impl PermissionRequestedEventArgs2 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2PermissionRequestedEventArgs2> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2PermissionRequestedEventArgs2> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2ContextMenuItem`.
+#[derive(Clone)]
+pub struct ContextMenuItem {
+    inner: ComRc<dyn ICoreWebView2ContextMenuItem>,
+}
+impl From<ComRc<dyn ICoreWebView2ContextMenuItem>> for ContextMenuItem {
+    fn from(inner: ComRc<dyn ICoreWebView2ContextMenuItem>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for ContextMenuItem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ContextMenuItem").finish()
+    }
+}
+impl ContextMenuItem {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2ContextMenuItem> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2ContextMenuItem> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2ContextMenuItemCollection`.
+#[derive(Clone)]
+pub struct ContextMenuItemCollection {
+    inner: ComRc<dyn ICoreWebView2ContextMenuItemCollection>,
+}
+impl From<ComRc<dyn ICoreWebView2ContextMenuItemCollection>> for ContextMenuItemCollection {
+    fn from(inner: ComRc<dyn ICoreWebView2ContextMenuItemCollection>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for ContextMenuItemCollection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ContextMenuItemCollection").finish()
+    }
+}
+impl ContextMenuItemCollection {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2ContextMenuItemCollection> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2ContextMenuItemCollection> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2ContextMenuTarget`.
+#[derive(Clone)]
+pub struct ContextMenuTarget {
+    inner: ComRc<dyn ICoreWebView2ContextMenuTarget>,
+}
+impl From<ComRc<dyn ICoreWebView2ContextMenuTarget>> for ContextMenuTarget {
+    fn from(inner: ComRc<dyn ICoreWebView2ContextMenuTarget>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for ContextMenuTarget {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ContextMenuTarget").finish()
+    }
+}
+impl ContextMenuTarget {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2ContextMenuTarget> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2ContextMenuTarget> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2ContextMenuRequestedEventArgs`.
+#[derive(Clone)]
+pub struct ContextMenuRequestedEventArgs {
+    inner: ComRc<dyn ICoreWebView2ContextMenuRequestedEventArgs>,
+}
+impl From<ComRc<dyn ICoreWebView2ContextMenuRequestedEventArgs>> for ContextMenuRequestedEventArgs {
+    fn from(inner: ComRc<dyn ICoreWebView2ContextMenuRequestedEventArgs>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for ContextMenuRequestedEventArgs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ContextMenuRequestedEventArgs").finish()
+    }
+}
+impl ContextMenuRequestedEventArgs {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2ContextMenuRequestedEventArgs> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2ContextMenuRequestedEventArgs> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2ControllerOptions`.
+#[derive(Clone)]
+pub struct ControllerOptions {
+    inner: ComRc<dyn ICoreWebView2ControllerOptions>,
+}
+impl From<ComRc<dyn ICoreWebView2ControllerOptions>> for ControllerOptions {
+    fn from(inner: ComRc<dyn ICoreWebView2ControllerOptions>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for ControllerOptions {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ControllerOptions").finish()
+    }
+}
+impl ControllerOptions {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2ControllerOptions> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2ControllerOptions> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Profile`.
+#[derive(Clone)]
+pub struct Profile {
+    inner: ComRc<dyn ICoreWebView2Profile>,
+}
+impl From<ComRc<dyn ICoreWebView2Profile>> for Profile {
+    fn from(inner: ComRc<dyn ICoreWebView2Profile>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Profile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Profile").finish()
+    }
+}
+impl Profile {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Profile> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Profile> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Certificate`.
+#[derive(Clone)]
+pub struct Certificate {
+    inner: ComRc<dyn ICoreWebView2Certificate>,
+}
+impl From<ComRc<dyn ICoreWebView2Certificate>> for Certificate {
+    fn from(inner: ComRc<dyn ICoreWebView2Certificate>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Certificate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Certificate").finish()
+    }
+}
+impl Certificate {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Certificate> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Certificate> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2ServerCertificateErrorDetectedEventArgs`.
+#[derive(Clone)]
+pub struct ServerCertificateErrorDetectedEventArgs {
+    inner: ComRc<dyn ICoreWebView2ServerCertificateErrorDetectedEventArgs>,
+}
+impl From<ComRc<dyn ICoreWebView2ServerCertificateErrorDetectedEventArgs>> for ServerCertificateErrorDetectedEventArgs {
+    fn from(inner: ComRc<dyn ICoreWebView2ServerCertificateErrorDetectedEventArgs>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for ServerCertificateErrorDetectedEventArgs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ServerCertificateErrorDetectedEventArgs").finish()
+    }
+}
+impl ServerCertificateErrorDetectedEventArgs {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2ServerCertificateErrorDetectedEventArgs> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2ServerCertificateErrorDetectedEventArgs> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Profile2`.
+#[derive(Clone)]
+pub struct Profile2 {
+    inner: ComRc<dyn ICoreWebView2Profile2>,
+}
+impl From<ComRc<dyn ICoreWebView2Profile2>> for Profile2 {
+    fn from(inner: ComRc<dyn ICoreWebView2Profile2>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Profile2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Profile2").finish()
+    }
+}
+impl Profile2 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Profile2> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Profile2> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Profile3`.
+#[derive(Clone)]
+pub struct Profile3 {
+    inner: ComRc<dyn ICoreWebView2Profile3>,
+}
+impl From<ComRc<dyn ICoreWebView2Profile3>> for Profile3 {
+    fn from(inner: ComRc<dyn ICoreWebView2Profile3>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Profile3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Profile3").finish()
+    }
+}
+impl Profile3 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Profile3> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Profile3> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2CustomSchemeRegistration`.
+#[derive(Clone)]
+pub struct CustomSchemeRegistration {
+    inner: ComRc<dyn ICoreWebView2CustomSchemeRegistration>,
+}
+impl From<ComRc<dyn ICoreWebView2CustomSchemeRegistration>> for CustomSchemeRegistration {
+    fn from(inner: ComRc<dyn ICoreWebView2CustomSchemeRegistration>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for CustomSchemeRegistration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CustomSchemeRegistration").finish()
+    }
+}
+impl CustomSchemeRegistration {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2CustomSchemeRegistration> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2CustomSchemeRegistration> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2PermissionRequestedEventArgs3`.
+#[derive(Clone)]
+pub struct PermissionRequestedEventArgs3 {
+    inner: ComRc<dyn ICoreWebView2PermissionRequestedEventArgs3>,
+}
+impl From<ComRc<dyn ICoreWebView2PermissionRequestedEventArgs3>> for PermissionRequestedEventArgs3 {
+    fn from(inner: ComRc<dyn ICoreWebView2PermissionRequestedEventArgs3>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for PermissionRequestedEventArgs3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PermissionRequestedEventArgs3").finish()
+    }
+}
+impl PermissionRequestedEventArgs3 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2PermissionRequestedEventArgs3> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2PermissionRequestedEventArgs3> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Profile4`.
+#[derive(Clone)]
+pub struct Profile4 {
+    inner: ComRc<dyn ICoreWebView2Profile4>,
+}
+impl From<ComRc<dyn ICoreWebView2Profile4>> for Profile4 {
+    fn from(inner: ComRc<dyn ICoreWebView2Profile4>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Profile4 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Profile4").finish()
+    }
+}
+impl Profile4 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Profile4> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Profile4> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2PermissionSettingCollectionView`.
+#[derive(Clone)]
+pub struct PermissionSettingCollectionView {
+    inner: ComRc<dyn ICoreWebView2PermissionSettingCollectionView>,
+}
+impl From<ComRc<dyn ICoreWebView2PermissionSettingCollectionView>> for PermissionSettingCollectionView {
+    fn from(inner: ComRc<dyn ICoreWebView2PermissionSettingCollectionView>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for PermissionSettingCollectionView {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PermissionSettingCollectionView").finish()
+    }
+}
+impl PermissionSettingCollectionView {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2PermissionSettingCollectionView> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2PermissionSettingCollectionView> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2PermissionSetting`.
+#[derive(Clone)]
+pub struct PermissionSetting {
+    inner: ComRc<dyn ICoreWebView2PermissionSetting>,
+}
+impl From<ComRc<dyn ICoreWebView2PermissionSetting>> for PermissionSetting {
+    fn from(inner: ComRc<dyn ICoreWebView2PermissionSetting>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for PermissionSetting {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PermissionSetting").finish()
+    }
+}
+impl PermissionSetting {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2PermissionSetting> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2PermissionSetting> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2ControllerOptions2`.
+#[derive(Clone)]
+pub struct ControllerOptions2 {
+    inner: ComRc<dyn ICoreWebView2ControllerOptions2>,
+}
+impl From<ComRc<dyn ICoreWebView2ControllerOptions2>> for ControllerOptions2 {
+    fn from(inner: ComRc<dyn ICoreWebView2ControllerOptions2>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for ControllerOptions2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ControllerOptions2").finish()
+    }
+}
+impl ControllerOptions2 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2ControllerOptions2> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2ControllerOptions2> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2SharedBuffer`.
+#[derive(Clone)]
+pub struct SharedBuffer {
+    inner: ComRc<dyn ICoreWebView2SharedBuffer>,
+}
+impl From<ComRc<dyn ICoreWebView2SharedBuffer>> for SharedBuffer {
+    fn from(inner: ComRc<dyn ICoreWebView2SharedBuffer>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for SharedBuffer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SharedBuffer").finish()
+    }
+}
+impl SharedBuffer {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2SharedBuffer> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2SharedBuffer> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2File`.
+#[derive(Clone)]
+pub struct File {
+    inner: ComRc<dyn ICoreWebView2File>,
+}
+impl From<ComRc<dyn ICoreWebView2File>> for File {
+    fn from(inner: ComRc<dyn ICoreWebView2File>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for File {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("File").finish()
+    }
+}
+impl File {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2File> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2File> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2ObjectCollectionView`.
+#[derive(Clone)]
+pub struct ObjectCollectionView {
+    inner: ComRc<dyn ICoreWebView2ObjectCollectionView>,
+}
+impl From<ComRc<dyn ICoreWebView2ObjectCollectionView>> for ObjectCollectionView {
+    fn from(inner: ComRc<dyn ICoreWebView2ObjectCollectionView>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for ObjectCollectionView {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ObjectCollectionView").finish()
+    }
+}
+impl ObjectCollectionView {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2ObjectCollectionView> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2ObjectCollectionView> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2WebMessageReceivedEventArgs2`.
+#[derive(Clone)]
+pub struct WebMessageReceivedEventArgs2 {
+    inner: ComRc<dyn ICoreWebView2WebMessageReceivedEventArgs2>,
+}
+impl From<ComRc<dyn ICoreWebView2WebMessageReceivedEventArgs2>> for WebMessageReceivedEventArgs2 {
+    fn from(inner: ComRc<dyn ICoreWebView2WebMessageReceivedEventArgs2>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for WebMessageReceivedEventArgs2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WebMessageReceivedEventArgs2").finish()
+    }
+}
+impl WebMessageReceivedEventArgs2 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2WebMessageReceivedEventArgs2> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2WebMessageReceivedEventArgs2> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Profile5`.
+#[derive(Clone)]
+pub struct Profile5 {
+    inner: ComRc<dyn ICoreWebView2Profile5>,
+}
+impl From<ComRc<dyn ICoreWebView2Profile5>> for Profile5 {
+    fn from(inner: ComRc<dyn ICoreWebView2Profile5>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Profile5 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Profile5").finish()
+    }
+}
+impl Profile5 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Profile5> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Profile5> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Profile6`.
+#[derive(Clone)]
+pub struct Profile6 {
+    inner: ComRc<dyn ICoreWebView2Profile6>,
+}
+impl From<ComRc<dyn ICoreWebView2Profile6>> for Profile6 {
+    fn from(inner: ComRc<dyn ICoreWebView2Profile6>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Profile6 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Profile6").finish()
+    }
+}
+impl Profile6 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Profile6> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Profile6> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2NewWindowRequestedEventArgs3`.
+#[derive(Clone)]
+pub struct NewWindowRequestedEventArgs3 {
+    inner: ComRc<dyn ICoreWebView2NewWindowRequestedEventArgs3>,
+}
+impl From<ComRc<dyn ICoreWebView2NewWindowRequestedEventArgs3>> for NewWindowRequestedEventArgs3 {
+    fn from(inner: ComRc<dyn ICoreWebView2NewWindowRequestedEventArgs3>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for NewWindowRequestedEventArgs3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("NewWindowRequestedEventArgs3").finish()
+    }
+}
+impl NewWindowRequestedEventArgs3 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2NewWindowRequestedEventArgs3> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2NewWindowRequestedEventArgs3> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Profile7`.
+#[derive(Clone)]
+pub struct Profile7 {
+    inner: ComRc<dyn ICoreWebView2Profile7>,
+}
+impl From<ComRc<dyn ICoreWebView2Profile7>> for Profile7 {
+    fn from(inner: ComRc<dyn ICoreWebView2Profile7>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Profile7 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Profile7").finish()
+    }
+}
+impl Profile7 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Profile7> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Profile7> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2BrowserExtension`.
+#[derive(Clone)]
+pub struct BrowserExtension {
+    inner: ComRc<dyn ICoreWebView2BrowserExtension>,
+}
+impl From<ComRc<dyn ICoreWebView2BrowserExtension>> for BrowserExtension {
+    fn from(inner: ComRc<dyn ICoreWebView2BrowserExtension>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for BrowserExtension {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BrowserExtension").finish()
+    }
+}
+impl BrowserExtension {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2BrowserExtension> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2BrowserExtension> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2BrowserExtensionList`.
+#[derive(Clone)]
+pub struct BrowserExtensionList {
+    inner: ComRc<dyn ICoreWebView2BrowserExtensionList>,
+}
+impl From<ComRc<dyn ICoreWebView2BrowserExtensionList>> for BrowserExtensionList {
+    fn from(inner: ComRc<dyn ICoreWebView2BrowserExtensionList>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for BrowserExtensionList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BrowserExtensionList").finish()
+    }
+}
+impl BrowserExtensionList {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2BrowserExtensionList> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2BrowserExtensionList> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2Profile8`.
+#[derive(Clone)]
+pub struct Profile8 {
+    inner: ComRc<dyn ICoreWebView2Profile8>,
+}
+impl From<ComRc<dyn ICoreWebView2Profile8>> for Profile8 {
+    fn from(inner: ComRc<dyn ICoreWebView2Profile8>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for Profile8 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Profile8").finish()
+    }
+}
+impl Profile8 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2Profile8> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2Profile8> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2NonClientRegionChangedEventArgs`.
+#[derive(Clone)]
+pub struct NonClientRegionChangedEventArgs {
+    inner: ComRc<dyn ICoreWebView2NonClientRegionChangedEventArgs>,
+}
+impl From<ComRc<dyn ICoreWebView2NonClientRegionChangedEventArgs>> for NonClientRegionChangedEventArgs {
+    fn from(inner: ComRc<dyn ICoreWebView2NonClientRegionChangedEventArgs>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for NonClientRegionChangedEventArgs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("NonClientRegionChangedEventArgs").finish()
+    }
+}
+impl NonClientRegionChangedEventArgs {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2NonClientRegionChangedEventArgs> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2NonClientRegionChangedEventArgs> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2RegionRectCollectionView`.
+#[derive(Clone)]
+pub struct RegionRectCollectionView {
+    inner: ComRc<dyn ICoreWebView2RegionRectCollectionView>,
+}
+impl From<ComRc<dyn ICoreWebView2RegionRectCollectionView>> for RegionRectCollectionView {
+    fn from(inner: ComRc<dyn ICoreWebView2RegionRectCollectionView>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for RegionRectCollectionView {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RegionRectCollectionView").finish()
+    }
+}
+impl RegionRectCollectionView {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2RegionRectCollectionView> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2RegionRectCollectionView> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2ProcessFailedEventArgs3`.
+#[derive(Clone)]
+pub struct ProcessFailedEventArgs3 {
+    inner: ComRc<dyn ICoreWebView2ProcessFailedEventArgs3>,
+}
+impl From<ComRc<dyn ICoreWebView2ProcessFailedEventArgs3>> for ProcessFailedEventArgs3 {
+    fn from(inner: ComRc<dyn ICoreWebView2ProcessFailedEventArgs3>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for ProcessFailedEventArgs3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ProcessFailedEventArgs3").finish()
+    }
+}
+impl ProcessFailedEventArgs3 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2ProcessFailedEventArgs3> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2ProcessFailedEventArgs3> {
+        &self.inner
+    }
+}
+
+/// Wrapper for `ICoreWebView2EnvironmentOptions7`.
+#[derive(Clone)]
+pub struct EnvironmentOptions7 {
+    inner: ComRc<dyn ICoreWebView2EnvironmentOptions7>,
+}
+impl From<ComRc<dyn ICoreWebView2EnvironmentOptions7>> for EnvironmentOptions7 {
+    fn from(inner: ComRc<dyn ICoreWebView2EnvironmentOptions7>) -> Self {
+        Self { inner }
+    }
+}
+impl fmt::Debug for EnvironmentOptions7 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("EnvironmentOptions7").finish()
+    }
+}
+impl EnvironmentOptions7 {
+    pub fn into_inner(self) -> ComRc<dyn ICoreWebView2EnvironmentOptions7> {
+        self.inner
+    }
+    pub fn as_inner(&self) -> &ComRc<dyn ICoreWebView2EnvironmentOptions7> {
+        &self.inner
+    }
+}
+
 /// Wrapper for `IStream`.
 #[derive(Clone)]
 pub struct Stream {
@@ -1474,3 +3743,4 @@ impl Stream {
         &self.inner
     }
 }
+
