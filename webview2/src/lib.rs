@@ -671,6 +671,7 @@ impl Environment {
                 .create_core_web_view2_controller(parent_window, completed.as_raw())
         })
     }
+
     pub fn create_web_resource_response(
         &self,
         content: Stream,
@@ -722,6 +723,44 @@ impl Environment {
         Ok(unsafe { token.assume_init() })
     }
     remove_event_handler!(remove_new_browser_version_available);
+
+    pub fn environment3(&self) -> Result<Environment3> {
+        let inner = self
+            .inner
+            .get_interface::<dyn ICoreWebView2Environment3>()
+            .ok_or_else(|| Error::new(E_NOINTERFACE))?;
+        Ok(Environment3 { inner })
+    }
+}
+
+impl Environment3 {
+    pub fn create_composition_controller(
+        &self,
+        parent_window: HWND,
+        completed: impl FnOnce(Result<CompositionController>) -> Result<()> + 'static,
+    ) -> Result<()> {
+        let completed = Cell::new(Some(completed));
+        let completed = callback!(
+            ICoreWebView2CreateCoreWebView2CompositionControllerCompletedHandler,
+            move |result: HRESULT,
+                  created_host: *mut *mut ICoreWebView2CompositionControllerVTable|
+                  -> HRESULT {
+                let result = check_hresult(result).map(|_| CompositionController {
+                    inner: unsafe { add_ref_to_rc(created_host) },
+                });
+                if let Some(completed) = completed.take() {
+                    to_hresult(completed(result))
+                } else {
+                    S_OK
+                }
+            }
+        );
+
+        check_hresult(unsafe {
+            self.inner
+                .create_core_web_view2_composition_controller(parent_window, completed.as_raw())
+        })
+    }
 }
 
 impl Controller {
@@ -848,6 +887,18 @@ impl Controller3 {
 
     get!(get_bounds_mode, BoundsMode);
     put!(put_bounds_mode, mode: BoundsMode);
+}
+
+impl CompositionController {
+    get!(get_cursor, HCURSOR);
+
+    pub fn get_controller(&self) -> Result<Controller> {
+        let inner = self
+            .inner
+            .get_interface::<dyn ICoreWebView2Controller>()
+            .ok_or_else(|| Error::new(E_NOINTERFACE))?;
+        Ok(Controller { inner })
+    }
 }
 
 impl WebView {

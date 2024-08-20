@@ -3,7 +3,7 @@
 use once_cell::unsync::OnceCell;
 use std::mem;
 use std::rc::Rc;
-use webview2::*;
+use webview2::Controller;
 use winapi::shared::windef::*;
 use winapi::um::winuser::*;
 use winit::dpi::Size;
@@ -15,7 +15,7 @@ use winit::window::WindowBuilder;
 fn main() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("WebView2 - virtual host")
+        .with_title("WebView2 - winit")
         .with_inner_size(Size::Logical((1600, 900).into()))
         .build(&event_loop)
         .unwrap();
@@ -27,37 +27,20 @@ fn main() {
         let hwnd = window.hwnd() as HWND;
 
         webview2::Environment::builder().build(move |env| {
-            env.expect("env")
-                .create_controller(hwnd, move |controller| {
-                    let controller = controller.expect("create host");
+            let env = env.expect("env");
+            let env3 = env.environment3().expect("env3");
+
+            env3
+                .create_composition_controller(hwnd, move |cc| {
+                    let cc = cc.expect("create_composition_controller");
+                    let controller = cc.get_controller().expect("get_controller");
                     let w = controller.get_webview().expect("get_webview");
 
                     let _ = w.get_settings().map(|settings| {
                         let _ = settings.put_is_status_bar_enabled(false);
                         let _ = settings.put_are_default_context_menus_enabled(false);
                         let _ = settings.put_is_zoom_control_enabled(false);
-
-                        settings.put_is_web_message_enabled(true).unwrap();
                     });
-
-                    {
-                        let mut cwd = std::env::current_dir().unwrap();
-                        cwd.push("public");
-                        let w3 = w.get_webview_3().expect("get_webview_3");
-
-                        w3.set_virtual_host_name_to_folder_mapping(
-                            "example.com",
-                            cwd.to_str().unwrap(),
-                            HostResourceAccessKind::Allow,
-                        )
-                        .expect("set_virtual_host_name_to_folder_mapping");
-                    }
-
-                    {
-                        let cc = controller.get_composition_controller().expect("get_composition_controller");
-                        let cursor = cc.get_cursor().expect("get_cursor");
-                        eprintln!("cursor={:?}", cursor);
-                    }
 
                     unsafe {
                         let mut rect = mem::zeroed();
@@ -65,15 +48,7 @@ fn main() {
                         controller.put_bounds(rect).expect("put_bounds");
                     }
 
-                    w.add_navigation_completed(|w, _| {
-                        w.post_web_message_as_json(r#"{"type":"hello"}"#)
-                            .expect("post_web_message_as_json");
-                        Ok(())
-                    })
-                    .expect("add_navigation_completed");
-
-                    w.navigate("https://example.com/index.html")
-                        .expect("navigate");
+                    w.navigate("https://wikipedia.org").expect("navigate");
 
                     controller_clone.set(controller).unwrap();
                     Ok(())

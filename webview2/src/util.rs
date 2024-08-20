@@ -1,5 +1,23 @@
 use winapi::shared::windef::RECT;
 
+pub fn empty(color: &str) -> String {
+    format!(
+        r#"<html>
+    <style>
+        body {{
+            width: 100%;
+            height: 100%;
+            background: {};
+            overflow: hidden;
+        }}
+    </style>
+    <body>
+    </body>
+</html>"#,
+        color
+    )
+}
+
 pub fn calculate_bounds(
     rect: RECT,
     ref_width: i32,
