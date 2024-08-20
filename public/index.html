@@ -1,5 +1,11 @@
 <!DOCTYPE HTML>
 <html>
+	<script>
+		window.chrome.webview.addEventListener('message', arg => {
+			document.write(JSON.stringify(arg.data));
+			document.write(typeof arg.data);
+		});
+	</script>
 	<body>
 		hello, world!
 	</body>

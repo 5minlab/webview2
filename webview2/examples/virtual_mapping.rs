@@ -36,6 +36,8 @@ fn main() {
                         let _ = settings.put_is_status_bar_enabled(false);
                         let _ = settings.put_are_default_context_menus_enabled(false);
                         let _ = settings.put_is_zoom_control_enabled(false);
+
+                        settings.put_is_web_message_enabled(true).unwrap();
                     });
 
                     {
@@ -56,6 +58,12 @@ fn main() {
                         GetClientRect(hwnd, &mut rect);
                         controller.put_bounds(rect).expect("put_bounds");
                     }
+
+                    w.add_navigation_completed(|w, _| {
+                        w.post_web_message_as_json(r#"{"type":"hello"}"#)
+                            .expect("post_web_message_as_json");
+                        Ok(())
+                    }).expect("add_navigation_completed");
 
                     w.navigate("https://example.com/index.html")
                         .expect("navigate");
