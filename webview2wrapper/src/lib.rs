@@ -4,6 +4,7 @@ use std::sync::{Arc, RwLock};
 use webview2::host_object::IDispatch;
 use webview2::*;
 use winapi::shared::windef::*;
+use winapi::um::winbase::SetEnvironmentStringsA;
 
 type WebView2DataWrapper = Arc<RwLock<Option<WebView2Data>>>;
 
@@ -32,6 +33,13 @@ pub unsafe extern "C" fn webview2_open(
     folder_path_ptr: *const u16,
     folder_path_len: u32,
 ) -> usize {
+    unsafe {
+        std::env::set_var(
+            "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+            "--autoplay-policy=no-user-gesture-required",
+        );
+    }
+
     let top = 0;
     let left = 0;
 
@@ -50,6 +58,20 @@ pub unsafe extern "C" fn webview2_open(
         env.expect("env")
             .create_controller(hwnd, move |controller| {
                 let controller = controller.expect("create host");
+                controller.put_is_visible(false).expect("put_is_visible");
+
+                {
+                    let c2 = controller.get_controller2().expect("get_controller2");
+                    let c = Color {
+                        a: 255,
+                        r: 0,
+                        g: 0,
+                        b: 0,
+                    };
+                    c2.put_default_background_color(c)
+                        .expect("put_default_background_color");
+                }
+
                 let w = controller.get_webview().expect("get_webview");
 
                 let _ = w.get_settings().map(|settings| {
@@ -77,14 +99,15 @@ pub unsafe extern "C" fn webview2_open(
                 let r = RECT {
                     left,
                     top,
-                    right: left + 500,
-                    bottom: top + 500,
+                    right: left,
+                    bottom: top,
                 };
 
                 controller.put_bounds(r).expect("put_bounds");
 
                 let editor_obj = Box::new(host_object::Variant::from(1));
                 let (sender, receiver) = mpsc::channel();
+
                 let obj = host_object::FunctionWithStringArgument {
                     sender: sender.clone(),
                 };
@@ -95,13 +118,21 @@ pub unsafe extern "C" fn webview2_open(
                 let sender0 = sender.clone();
                 w.add_web_message_received(move |_w, args| {
                     let msg = args.try_get_web_message_as_string();
-                    eprintln!("msg={:?}", msg);
                     if let Ok(msg) = msg {
                         sender0.send(msg).expect("mpsc::Sender::send");
                     }
                     Ok(())
                 })
                 .expect("add_web_message_received");
+
+                w.navigate_to_string(&util::empty("black"))
+                    .expect("navigate_to_string");
+
+                let c = controller.clone();
+                w.add_navigation_completed(move |w, _| {
+                    c.put_is_visible(true).expect("put_is_visible");
+                    Ok(())
+                });
 
                 host_object::ensure_bind(w.clone(), "editor".to_owned(), editor_obj, move |w| {
                     let url_str = url_str.clone();
@@ -208,6 +239,10 @@ pub unsafe extern "C" fn webview2_update_position2(
     };
 
     with_wrapper(ptr, |data| {
+        if !data.controller.get_is_visible().unwrap() {
+            return;
+        }
+
         let dpi = unsafe {
             winapi::um::winuser::GetDpiForWindow(
                 data.controller
@@ -247,9 +282,25 @@ pub unsafe extern "C" fn webview2_pull_free(data: *mut u16, len: u32) {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn webview2_post_web_message_as_json(
+    ptr: usize,
+    json_ptr: *const u16,
+    len: u32,
+) {
+    let json_str = from_utf16(json_ptr, len).expect("json_str.from_utf16");
+
+    with_wrapper(ptr, |data| {
+        if let Ok(webview) = data.controller.get_webview() {
+            webview
+                .post_web_message_as_json(&json_str)
+                .expect("post_web_message_as_json");
+        }
+    });
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn webview2_execute_script(ptr: usize, script_ptr: *const u16, len: u32) {
-    let script_data: &[u16] = std::slice::from_raw_parts(script_ptr, len as usize);
-    let script_str = String::from_utf16_lossy(script_data);
+    let script_str = from_utf16(script_ptr, len).expect("script_str.from_utf16");
 
     with_wrapper(ptr, |data| {
         if let Ok(webview) = data.controller.get_webview() {

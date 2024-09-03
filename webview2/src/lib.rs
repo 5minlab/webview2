@@ -873,6 +873,7 @@ impl Controller {
 impl Controller2 {
     get!(get_default_background_color, Color);
     put!(put_default_background_color, color: Color);
+
 }
 
 impl Controller3 {
@@ -1630,7 +1631,7 @@ impl io::Seek for Stream {
 pub use webview2_sys::{
     BoundsMode, CapturePreviewImageFormat, EventRegistrationToken, KeyEventKind, MoveFocusReason,
     PermissionKind, PermissionState, PhysicalKeyStatus, ProcessFailedKind, ScriptDialogKind,
-    WebErrorStatus, WebResourceContext, HostResourceAccessKind
+    WebErrorStatus, WebResourceContext, HostResourceAccessKind, Color
 };
 
 /// WebView2 Error.
