@@ -60,18 +60,22 @@ fn initialize_controller(controller: Controller, state: InitializeState) -> Resu
         settings.put_is_zoom_control_enabled(false).unwrap();
         settings.put_is_built_in_error_page_enabled(false).unwrap();
 
-        let s3 = settings.get_settings3().expect("get_settings3");
-        s3.put_are_browser_accelerator_keys_enabled(false).unwrap();
+        if let Ok(s3) = settings.get_settings3() {
+            s3.put_are_browser_accelerator_keys_enabled(false).unwrap();
+        }
 
-        let s4 = settings.get_settings4().expect("get_settings4");
-        s4.put_is_password_autosave_enabled(false).unwrap();
-        s4.put_is_general_autofill_enabled(false).unwrap();
+        if let Ok(s4) = settings.get_settings4() {
+            s4.put_is_password_autosave_enabled(false).unwrap();
+            s4.put_is_general_autofill_enabled(false).unwrap();
+        }
 
-        let s5 = settings.get_settings5().expect("get_settings5");
-        s5.put_is_pinch_zoom_enabled(false).unwrap();
+        if let Ok(s5) = settings.get_settings5() {
+            s5.put_is_pinch_zoom_enabled(false).unwrap();
+        }
 
-        let s6 = settings.get_settings6().expect("get_settings6");
-        s6.put_is_swipe_navigation_enabled(false).unwrap();
+        if let Ok(s6) = settings.get_settings6() {
+            s6.put_is_swipe_navigation_enabled(false).unwrap();
+        }
     });
 
     let r = RECT {
@@ -179,20 +183,21 @@ pub unsafe extern "C" fn webview2_open(
     let ptr = WebView2DataWrapper::into_raw(wrapper.clone());
 
     let _ = Environment::builder().build(move |env| {
-        env.expect("env")
-            .create_controller(hwnd, move |controller| {
-                let controller = controller.expect("create host");
-                let data = initialize_controller(controller, state).expect("initialize_controller");
+        let env = env.expect("env");
 
-                {
-                    let mut guard = wrapper.write().unwrap();
-                    *guard = Some(data);
-                }
+        env.create_controller(hwnd, move |controller| {
+            let controller = controller.expect("create host");
+            let data = initialize_controller(controller, state).expect("initialize_controller");
 
-                std::mem::forget(wrapper);
+            {
+                let mut guard = wrapper.write().unwrap();
+                *guard = Some(data);
+            }
 
-                Ok(())
-            })
+            std::mem::forget(wrapper);
+
+            Ok(())
+        })
     });
 
     ptr as usize
