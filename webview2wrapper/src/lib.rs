@@ -4,7 +4,6 @@ use std::sync::{Arc, RwLock};
 use webview2::host_object::IDispatch;
 use webview2::*;
 use winapi::shared::windef::*;
-use winapi::um::winbase::SetEnvironmentStringsA;
 
 type WebView2DataWrapper = Arc<RwLock<Option<WebView2Data>>>;
 
@@ -36,7 +35,7 @@ pub unsafe extern "C" fn webview2_open(
     unsafe {
         std::env::set_var(
             "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
-            "--autoplay-policy=no-user-gesture-required",
+            "--autoplay-policy=no-user-gesture-required --unlimited-storage",
         );
     }
 
