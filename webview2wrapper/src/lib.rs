@@ -11,8 +11,9 @@ struct WebView2Data {
     controller: Controller,
 
     // Callbacks
-    #[allow(unused)]
     queue: mpsc::Receiver<String>,
+
+    pull_scratch: Vec<u16>,
 }
 
 fn from_utf16(ptr: *const u16, len: u32) -> Option<String> {
@@ -262,22 +263,22 @@ pub unsafe extern "C" fn webview2_update_position2(
 pub unsafe extern "C" fn webview2_pull(ptr: usize, out: *mut *const u16, len: *mut u32) {
     with_wrapper(ptr, |data| {
         if let Ok(s) = data.queue.try_recv() {
-            let mut utf16_str = s.encode_utf16().collect::<Vec<u16>>();
-            utf16_str.push(0);
-            let utf16_str = utf16_str.into_boxed_slice();
+            let data = &mut data.pull_scratch;
+            data.clear();
+            for v in s.encode_utf16() {
+                data.push(v);
+            }
+            data.push(0);
 
-            *out = utf16_str.as_ptr();
-            *len = utf16_str.len() as u32;
-
-            std::mem::forget(utf16_str);
+            *out = data.as_ptr();
+            *len = data.len() as u32;
         }
     });
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn webview2_pull_free(data: *mut u16, len: u32) {
-    let b: Box<[u16]> = Box::from_raw(std::slice::from_raw_parts_mut(data, len as usize));
-    std::mem::drop(b);
+pub unsafe extern "C" fn webview2_pull_free(_data: *mut u16, _len: u32) {
+    // noop
 }
 
 #[no_mangle]
