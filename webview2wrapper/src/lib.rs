@@ -24,6 +24,127 @@ fn from_utf16(ptr: *const u16, len: u32) -> Option<String> {
     String::from_utf16(data).ok()
 }
 
+struct InitializeState {
+    url_str: String,
+    host_name: Option<String>,
+    folder_path: Option<String>,
+}
+
+fn initialize_controller(controller: Controller, state: InitializeState) -> Result<WebView2Data> {
+    let InitializeState {
+        url_str,
+        host_name,
+        folder_path,
+    } = state;
+    controller.put_is_visible(false).expect("put_is_visible");
+
+    {
+        let c2 = controller.get_controller2().expect("get_controller2");
+        let c = Color {
+            a: 255,
+            r: 0,
+            g: 0,
+            b: 0,
+        };
+        c2.put_default_background_color(c)
+            .expect("put_default_background_color");
+    }
+
+    let w = controller.get_webview().expect("get_webview");
+
+    let _ = w.get_settings().map(|settings| {
+        settings.put_is_status_bar_enabled(false).unwrap();
+        settings
+            .put_are_default_context_menus_enabled(false)
+            .unwrap();
+        settings.put_is_zoom_control_enabled(false).unwrap();
+        settings.put_is_built_in_error_page_enabled(false).unwrap();
+
+        let s3 = settings.get_settings3().expect("get_settings3");
+        s3.put_are_browser_accelerator_keys_enabled(false).unwrap();
+
+        let s4 = settings.get_settings4().expect("get_settings4");
+        s4.put_is_password_autosave_enabled(false).unwrap();
+        s4.put_is_general_autofill_enabled(false).unwrap();
+
+        let s5 = settings.get_settings5().expect("get_settings5");
+        s5.put_is_pinch_zoom_enabled(false).unwrap();
+
+        let s6 = settings.get_settings6().expect("get_settings6");
+        s6.put_is_swipe_navigation_enabled(false).unwrap();
+    });
+
+    let r = RECT {
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+
+    controller.put_bounds(r).expect("put_bounds");
+
+    let editor_obj = Box::new(host_object::Variant::from(1));
+    let (sender, receiver) = mpsc::channel();
+
+    let obj = host_object::FunctionWithStringArgument {
+        sender: sender.clone(),
+    };
+    let message_obj = Box::new(host_object::Variant::from(ManuallyDrop::new(Some(
+        IDispatch::from(obj),
+    ))));
+
+    let sender0 = sender.clone();
+    w.add_web_message_received(move |_w, args| {
+        let msg = args.try_get_web_message_as_string();
+        if let Ok(msg) = msg {
+            sender0.send(msg).expect("mpsc::Sender::send");
+        }
+        Ok(())
+    })
+    .expect("add_web_message_received");
+
+    w.navigate_to_string(&util::empty("black"))
+        .expect("navigate_to_string");
+
+    let c = controller.clone();
+    w.add_navigation_completed(move |_w, _| {
+        c.put_is_visible(true).expect("put_is_visible");
+        Ok(())
+    })
+    .ok();
+
+    host_object::ensure_bind(w.clone(), "editor".to_owned(), editor_obj, move |w| {
+        let url_str = url_str.clone();
+        host_object::ensure_bind(
+            w.clone(),
+            "functioncall".to_owned(),
+            message_obj,
+            move |w| {
+                if let (Some(host_name), Some(folder_path)) =
+                    (host_name.as_ref(), folder_path.as_ref())
+                {
+                    w.get_webview_3()
+                        .expect("get_webview_3")
+                        .set_virtual_host_name_to_folder_mapping(
+                            host_name,
+                            folder_path,
+                            HostResourceAccessKind::Allow,
+                        )
+                        .ok();
+                }
+                w.navigate(&url_str).expect("navigate");
+            },
+        );
+    });
+
+    Ok(WebView2Data {
+        controller,
+
+        queue: receiver,
+        pull_scratch: Vec::new(),
+    })
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn webview2_open(
     url_ptr: *const u16,
@@ -40,12 +161,15 @@ pub unsafe extern "C" fn webview2_open(
         );
     }
 
-    let top = 0;
-    let left = 0;
-
     let url_str = from_utf16(url_ptr, url_len).expect("url_str.from_utf16");
     let host_name = from_utf16(host_name_ptr, host_name_len);
     let folder_path = from_utf16(folder_path_ptr, folder_path_len);
+
+    let state = InitializeState {
+        url_str,
+        host_name,
+        folder_path,
+    };
 
     use winapi::um::winuser::*;
 
@@ -58,113 +182,11 @@ pub unsafe extern "C" fn webview2_open(
         env.expect("env")
             .create_controller(hwnd, move |controller| {
                 let controller = controller.expect("create host");
-                controller.put_is_visible(false).expect("put_is_visible");
-
-                {
-                    let c2 = controller.get_controller2().expect("get_controller2");
-                    let c = Color {
-                        a: 255,
-                        r: 0,
-                        g: 0,
-                        b: 0,
-                    };
-                    c2.put_default_background_color(c)
-                        .expect("put_default_background_color");
-                }
-
-                let w = controller.get_webview().expect("get_webview");
-
-                let _ = w.get_settings().map(|settings| {
-                    settings.put_is_status_bar_enabled(false).unwrap();
-                    settings
-                        .put_are_default_context_menus_enabled(false)
-                        .unwrap();
-                    settings.put_is_zoom_control_enabled(false).unwrap();
-                    settings.put_is_built_in_error_page_enabled(false).unwrap();
-
-                    let s3 = settings.get_settings3().expect("get_settings3");
-                    s3.put_are_browser_accelerator_keys_enabled(false).unwrap();
-
-                    let s4 = settings.get_settings4().expect("get_settings4");
-                    s4.put_is_password_autosave_enabled(false).unwrap();
-                    s4.put_is_general_autofill_enabled(false).unwrap();
-
-                    let s5 = settings.get_settings5().expect("get_settings5");
-                    s5.put_is_pinch_zoom_enabled(false).unwrap();
-
-                    let s6 = settings.get_settings6().expect("get_settings6");
-                    s6.put_is_swipe_navigation_enabled(false).unwrap();
-                });
-
-                let r = RECT {
-                    left,
-                    top,
-                    right: left,
-                    bottom: top,
-                };
-
-                controller.put_bounds(r).expect("put_bounds");
-
-                let editor_obj = Box::new(host_object::Variant::from(1));
-                let (sender, receiver) = mpsc::channel();
-
-                let obj = host_object::FunctionWithStringArgument {
-                    sender: sender.clone(),
-                };
-                let message_obj = Box::new(host_object::Variant::from(ManuallyDrop::new(Some(
-                    IDispatch::from(obj),
-                ))));
-
-                let sender0 = sender.clone();
-                w.add_web_message_received(move |_w, args| {
-                    let msg = args.try_get_web_message_as_string();
-                    if let Ok(msg) = msg {
-                        sender0.send(msg).expect("mpsc::Sender::send");
-                    }
-                    Ok(())
-                })
-                .expect("add_web_message_received");
-
-                w.navigate_to_string(&util::empty("black"))
-                    .expect("navigate_to_string");
-
-                let c = controller.clone();
-                w.add_navigation_completed(move |w, _| {
-                    c.put_is_visible(true).expect("put_is_visible");
-                    Ok(())
-                });
-
-                host_object::ensure_bind(w.clone(), "editor".to_owned(), editor_obj, move |w| {
-                    let url_str = url_str.clone();
-                    host_object::ensure_bind(
-                        w.clone(),
-                        "functioncall".to_owned(),
-                        message_obj,
-                        move |w| {
-                            if let (Some(host_name), Some(folder_path)) =
-                                (host_name.as_ref(), folder_path.as_ref())
-                            {
-                                w.get_webview_3()
-                                    .expect("get_webview_3")
-                                    .set_virtual_host_name_to_folder_mapping(
-                                        host_name,
-                                        folder_path,
-                                        HostResourceAccessKind::Allow,
-                                    )
-                                    .ok();
-                            }
-                            w.navigate(&url_str).expect("navigate");
-                        },
-                    );
-                });
+                let data = initialize_controller(controller, state).expect("initialize_controller");
 
                 {
                     let mut guard = wrapper.write().unwrap();
-                    *guard = Some(WebView2Data {
-                        controller,
-
-                        queue: receiver,
-                    });
+                    *guard = Some(data);
                 }
 
                 std::mem::forget(wrapper);
