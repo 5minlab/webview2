@@ -163,6 +163,15 @@ fn initialize_controller(controller: Controller, state: InitializeState) -> Resu
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn webview2_check() -> usize {
+    if Environment::builder().build(move |_env| Ok(())).is_ok() {
+        1
+    } else {
+        0
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn webview2_open(
     url_ptr: *const u16,
     url_len: u32,
@@ -195,7 +204,7 @@ pub unsafe extern "C" fn webview2_open(
     let wrapper: WebView2DataWrapper = Arc::new(RwLock::new(None));
     let ptr = WebView2DataWrapper::into_raw(wrapper.clone());
 
-    let _ = Environment::builder().build(move |env| {
+    let res = Environment::builder().build(move |env| {
         let env = env.expect("env");
 
         env.create_controller(hwnd, move |controller| {
@@ -213,7 +222,12 @@ pub unsafe extern "C" fn webview2_open(
         })
     });
 
-    ptr as usize
+    if let Err(e) = res {
+        eprintln!("webview2_open: {:?}", e);
+        0
+    } else {
+        ptr as usize
+    }
 }
 
 fn with_wrapper<F>(ptr: usize, f: F)
