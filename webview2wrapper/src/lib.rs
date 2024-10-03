@@ -51,6 +51,7 @@ fn initialize_controller(controller: Controller, state: InitializeState) -> Resu
     }
 
     let w = controller.get_webview().expect("get_webview");
+    // w.open_dev_tools_window().expect("open_dev_tools_window");
 
     let _ = w.get_settings().map(|settings| {
         settings.put_is_status_bar_enabled(false).unwrap();
@@ -106,6 +107,18 @@ fn initialize_controller(controller: Controller, state: InitializeState) -> Resu
         Ok(())
     })
     .expect("add_web_message_received");
+
+    // disable all navigation
+    w.add_navigation_starting(move |_w, args| {
+        if let Ok(args3) = args.get_args3() {
+            let kind = args3.get_navigation_kind().expect("get_navigation_kind");
+            if kind == NavigationKind::BackOrForward || kind == NavigationKind::Reload {
+                args.put_cancel(true).ok();
+            }
+        }
+        Ok(())
+    })
+    .ok();
 
     w.navigate_to_string(&util::empty("black"))
         .expect("navigate_to_string");

@@ -873,7 +873,6 @@ impl Controller {
 impl Controller2 {
     get!(get_default_background_color, Color);
     put!(put_default_background_color, color: Color);
-
 }
 
 impl Controller3 {
@@ -1135,7 +1134,6 @@ impl WebView {
         &self,
         uri: &str,
         resource_context: WebResourceContext,
-
     ) -> Result<()> {
         let uri = WideCString::from_str(uri)?;
         check_hresult(unsafe {
@@ -1181,22 +1179,21 @@ impl WebView_3 {
         let host_name = WideCString::from_str(host_name)?;
         let folder_path = WideCString::from_str(folder_path)?;
         check_hresult(unsafe {
-            self.inner
-                .set_virtual_host_name_to_folder_mapping(host_name.as_ptr(), folder_path.as_ptr(), access_kind)
+            self.inner.set_virtual_host_name_to_folder_mapping(
+                host_name.as_ptr(),
+                folder_path.as_ptr(),
+                access_kind,
+            )
         })
     }
 
-    pub fn clear_virtual_host_name_to_folder_mapping(
-        &self,
-        host_name: &str,
-    ) -> Result<()> {
+    pub fn clear_virtual_host_name_to_folder_mapping(&self, host_name: &str) -> Result<()> {
         let host_name = WideCString::from_str(host_name)?;
         check_hresult(unsafe {
             self.inner
                 .clear_virtual_host_name_to_folder_mapping(host_name.as_ptr())
         })
     }
-
 }
 
 impl Settings {
@@ -1472,6 +1469,18 @@ impl NavigationStartingEventArgs {
     get_bool!(get_cancel);
     put_bool!(put_cancel);
     get!(get_navigation_id, u64);
+
+    pub fn get_args3(&self) -> Result<NavigationStartingEventArgs3> {
+        let inner = self
+            .inner
+            .get_interface::<dyn ICoreWebView2NavigationStartingEventArgs3>()
+            .ok_or_else(|| Error::new(E_NOINTERFACE))?;
+        Ok(NavigationStartingEventArgs3 { inner })
+    }
+}
+
+impl NavigationStartingEventArgs3 {
+    get!(get_navigation_kind, NavigationKind);
 }
 
 impl SourceChangedEventArgs {
@@ -1629,9 +1638,9 @@ impl io::Seek for Stream {
 
 #[doc(inline)]
 pub use webview2_sys::{
-    BoundsMode, CapturePreviewImageFormat, EventRegistrationToken, KeyEventKind, MoveFocusReason,
-    PermissionKind, PermissionState, PhysicalKeyStatus, ProcessFailedKind, ScriptDialogKind,
-    WebErrorStatus, WebResourceContext, HostResourceAccessKind, Color
+    BoundsMode, CapturePreviewImageFormat, Color, EventRegistrationToken, HostResourceAccessKind,
+    KeyEventKind, MoveFocusReason, PermissionKind, PermissionState, PhysicalKeyStatus,
+    ProcessFailedKind, ScriptDialogKind, WebErrorStatus, WebResourceContext, NavigationKind
 };
 
 /// WebView2 Error.
