@@ -5,14 +5,13 @@ use webview2::host_object::IDispatch;
 use webview2::*;
 use winapi::shared::windef::*;
 
-type WebView2DataWrapper = Arc<RwLock<Option<WebView2Data>>>;
+pub type WebView2DataWrapper = Arc<RwLock<Option<WebView2Data>>>;
 
-struct WebView2Data {
-    controller: Controller,
+pub struct WebView2Data {
+    pub controller: Controller,
 
     // Callbacks
     queue: mpsc::Receiver<String>,
-
     pull_scratch: Vec<u16>,
 }
 
@@ -24,18 +23,24 @@ fn from_utf16(ptr: *const u16, len: u32) -> Option<String> {
     String::from_utf16(data).ok()
 }
 
-struct InitializeState {
-    url_str: String,
-    host_name: Option<String>,
-    folder_path: Option<String>,
+pub fn init_env() {
+    unsafe {
+        std::env::set_var(
+            "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+            "--autoplay-policy=no-user-gesture-required --unlimited-storage",
+        );
+    }
 }
 
-fn initialize_controller(controller: Controller, state: InitializeState) -> Result<WebView2Data> {
-    let InitializeState {
-        url_str,
-        host_name,
-        folder_path,
-    } = state;
+pub struct InitializeState {
+    pub url_str: String,
+    pub host_name: Option<String>,
+    pub folder_path: Option<String>,
+
+    pub defines: Vec<String>,
+}
+
+pub fn setup_controller(controller: Controller) {
     controller.put_is_visible(false).expect("put_is_visible");
 
     {
@@ -79,35 +84,6 @@ fn initialize_controller(controller: Controller, state: InitializeState) -> Resu
         }
     });
 
-    let r = RECT {
-        left: 0,
-        top: 0,
-        right: 0,
-        bottom: 0,
-    };
-
-    controller.put_bounds(r).expect("put_bounds");
-
-    let editor_obj = Box::new(host_object::Variant::from(1));
-    let (sender, receiver) = mpsc::channel();
-
-    let obj = host_object::FunctionWithStringArgument {
-        sender: sender.clone(),
-    };
-    let message_obj = Box::new(host_object::Variant::from(ManuallyDrop::new(Some(
-        IDispatch::from(obj),
-    ))));
-
-    let sender0 = sender.clone();
-    w.add_web_message_received(move |_w, args| {
-        let msg = args.try_get_web_message_as_string();
-        if let Ok(msg) = msg {
-            sender0.send(msg).expect("mpsc::Sender::send");
-        }
-        Ok(())
-    })
-    .expect("add_web_message_received");
-
     // disable all navigation
     w.add_navigation_starting(move |_w, args| {
         if let Ok(args3) = args.get_args3() {
@@ -129,8 +105,104 @@ fn initialize_controller(controller: Controller, state: InitializeState) -> Resu
         Ok(())
     })
     .ok();
+}
 
-    host_object::ensure_bind(w.clone(), "editor".to_owned(), editor_obj, move |w| {
+pub fn initialize_controller_nobind(
+    controller: Controller,
+    state: InitializeState,
+) -> Result<WebView2Data> {
+    let InitializeState {
+        url_str,
+        host_name,
+        folder_path,
+        defines,
+    } = state;
+
+    let w = controller.get_webview().expect("get_webview");
+    inject_defines(w.clone(), defines, move || {
+        if let (Some(host_name), Some(folder_path)) = (host_name.as_ref(), folder_path.as_ref()) {
+            w.get_webview_3()
+                .expect("get_webview_3")
+                .set_virtual_host_name_to_folder_mapping(
+                    host_name,
+                    folder_path,
+                    HostResourceAccessKind::Allow,
+                )
+                .ok();
+        }
+        w.navigate(&url_str).expect("navigate");
+    });
+
+    let (_sender, receiver) = mpsc::channel();
+    Ok(WebView2Data {
+        controller,
+
+        queue: receiver,
+        pull_scratch: Vec::new(),
+    })
+}
+
+pub fn inject_defines<Fn>(w: WebView, mut names: Vec<String>, cb: Fn)
+where
+    Fn: FnOnce() + 'static,
+{
+    let name = match names.pop() {
+        Some(name) => name,
+        None => {
+            cb();
+            return;
+        }
+    };
+
+    let obj = Box::new(host_object::Variant::from(1));
+    host_object::ensure_bind(w.clone(), name, obj, move |w| {
+        inject_defines(w, names, cb);
+    });
+}
+
+pub fn initialize_controller(
+    controller: Controller,
+    state: InitializeState,
+) -> Result<WebView2Data> {
+    let InitializeState {
+        url_str,
+        host_name,
+        folder_path,
+        defines,
+    } = state;
+
+    setup_controller(controller.clone());
+
+    let w = controller.get_webview().expect("get_webview");
+    let r = RECT {
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+
+    controller.put_bounds(r).expect("put_bounds");
+
+    let (sender, receiver) = mpsc::channel();
+
+    let obj = host_object::FunctionWithStringArgument {
+        sender: sender.clone(),
+    };
+    let message_obj = Box::new(host_object::Variant::from(ManuallyDrop::new(Some(
+        IDispatch::from(obj),
+    ))));
+
+    let sender0 = sender.clone();
+    w.add_web_message_received(move |_w, args| {
+        let msg = args.try_get_web_message_as_string();
+        if let Ok(msg) = msg {
+            sender0.send(msg).expect("mpsc::Sender::send");
+        }
+        Ok(())
+    })
+    .expect("add_web_message_received");
+
+    inject_defines(w.clone(), defines, move || {
         let url_str = url_str.clone();
         host_object::ensure_bind(
             w.clone(),
@@ -179,22 +251,25 @@ pub unsafe extern "C" fn webview2_open(
     host_name_len: u32,
     folder_path_ptr: *const u16,
     folder_path_len: u32,
+    defines_ptr: *const u16,
+    defines_len: u32,
 ) -> usize {
-    unsafe {
-        std::env::set_var(
-            "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
-            "--autoplay-policy=no-user-gesture-required --unlimited-storage",
-        );
-    }
+    init_env();
 
     let url_str = from_utf16(url_ptr, url_len).expect("url_str.from_utf16");
     let host_name = from_utf16(host_name_ptr, host_name_len);
     let folder_path = from_utf16(folder_path_ptr, folder_path_len);
+    let defines = from_utf16(defines_ptr, defines_len)
+        .unwrap_or("".to_owned())
+        .split(';')
+        .map(|s| s.to_owned())
+        .collect();
 
     let state = InitializeState {
         url_str,
         host_name,
         folder_path,
+        defines,
     };
 
     use winapi::um::winuser::*;

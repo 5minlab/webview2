@@ -1,6 +1,5 @@
 use crate::WebView;
 use std::mem::ManuallyDrop;
-use std::sync::mpsc;
 use windows::core::*;
 pub use windows::Win32::System::Com::IDispatch;
 
@@ -143,7 +142,7 @@ pub fn ensure_bind<F>(w: WebView, name: String, mut obj: Box<Variant>, cb: F)
 where
     F: FnOnce(WebView) + 'static,
 {
-    eprintln!("bind");
+    // eprintln!("bind");
     w.add_host_object_to_script(&name, &mut obj.0)
         .expect("add_host_object_to_script");
 
@@ -154,12 +153,12 @@ pub fn check_bind<F>(w: WebView, name: String, obj: Box<Variant>, cb: F)
 where
     F: FnOnce(WebView) + 'static,
 {
-    eprintln!("check_bind");
+    // eprintln!("check_bind");
     let script = check_loaded(&name);
 
     let w0 = w.clone();
     w.execute_script(&script, move |s| {
-        println!("s={:?}", s);
+        // println!("s={:?}", s);
         if s == "\"loaded\"" {
             cb(w0);
         } else if s == "\"not_loaded\"" {
@@ -171,5 +170,5 @@ where
     })
     .expect("execute_script");
 
-    eprintln!("check_bind end");
+    // eprintln!("check_bind end");
 }
