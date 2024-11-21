@@ -75,7 +75,7 @@ fn main() {
                         update_bounds(data.controller.clone(), rect);
                     }
 
-                    {
+                    if false {
                         let w = data.controller.get_webview().expect("get_webview");
                         w.open_dev_tools_window().expect("open_dev_tools_window");
                     }
