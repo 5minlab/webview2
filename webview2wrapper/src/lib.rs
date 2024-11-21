@@ -107,6 +107,24 @@ pub fn setup_controller(controller: Controller) {
     .ok();
 }
 
+pub fn inject_defines<Fn>(w: WebView, mut names: Vec<String>, cb: Fn)
+where
+    Fn: FnOnce() + 'static,
+{
+    let name = match names.pop() {
+        Some(name) => name,
+        None => {
+            cb();
+            return;
+        }
+    };
+
+    let obj = Box::new(host_object::Variant::from(1));
+    host_object::ensure_bind(w.clone(), name, obj, move |w| {
+        inject_defines(w, names, cb);
+    });
+}
+
 pub fn initialize_controller_nobind(
     controller: Controller,
     state: InitializeState,
@@ -140,24 +158,6 @@ pub fn initialize_controller_nobind(
         queue: receiver,
         pull_scratch: Vec::new(),
     })
-}
-
-pub fn inject_defines<Fn>(w: WebView, mut names: Vec<String>, cb: Fn)
-where
-    Fn: FnOnce() + 'static,
-{
-    let name = match names.pop() {
-        Some(name) => name,
-        None => {
-            cb();
-            return;
-        }
-    };
-
-    let obj = Box::new(host_object::Variant::from(1));
-    host_object::ensure_bind(w.clone(), name, obj, move |w| {
-        inject_defines(w, names, cb);
-    });
 }
 
 pub fn initialize_controller(
@@ -262,6 +262,7 @@ pub unsafe extern "C" fn webview2_open(
     let defines = from_utf16(defines_ptr, defines_len)
         .unwrap_or("".to_owned())
         .split(';')
+        .filter(|s| !s.is_empty())
         .map(|s| s.to_owned())
         .collect();
 
