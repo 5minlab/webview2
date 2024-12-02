@@ -41,7 +41,7 @@ fn main() {
     cwd.push("public");
 
     let state = InitializeState {
-        url_str: "https://shell.pmc0.pages.dev/index.html".to_owned(),
+        url_str: "https://shell.pmc0.pages.dev/index.html?overlay=1".to_owned(),
         host_name: Some("shell.pmc0.pages.dev".to_owned()),
         folder_path: Some(cwd.to_str().unwrap().to_owned()),
         defines: vec!["shellonly".to_owned()],
