@@ -253,12 +253,16 @@ pub unsafe extern "C" fn webview2_open(
     folder_path_len: u32,
     defines_ptr: *const u16,
     defines_len: u32,
+    user_data_folder_ptr: *const u16,
+    user_data_folder_len: u32,
 ) -> usize {
     init_env();
 
     let url_str = from_utf16(url_ptr, url_len).expect("url_str.from_utf16");
     let host_name = from_utf16(host_name_ptr, host_name_len);
     let folder_path = from_utf16(folder_path_ptr, folder_path_len);
+    let user_data_folder = from_utf16(user_data_folder_ptr, user_data_folder_len);
+
     let defines = from_utf16(defines_ptr, defines_len)
         .unwrap_or("".to_owned())
         .split(';')
@@ -280,7 +284,13 @@ pub unsafe extern "C" fn webview2_open(
     let wrapper: WebView2DataWrapper = Arc::new(RwLock::new(None));
     let ptr = WebView2DataWrapper::into_raw(wrapper.clone());
 
-    let res = Environment::builder().build(move |env| {
+    let mut builder = Environment::builder();
+    if let Some(ref user_data_folder) = user_data_folder {
+        let path = std::path::Path::new(user_data_folder);
+        builder = builder.with_user_data_folder(&path);
+    }
+
+    let res = builder.build(move |env| {
         let env = env.expect("env");
 
         env.create_controller(hwnd, move |controller| {
