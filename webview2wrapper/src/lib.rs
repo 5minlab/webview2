@@ -1,9 +1,24 @@
 use std::mem::ManuallyDrop;
 use std::sync::mpsc;
 use std::sync::{Arc, RwLock};
+use std::ptr;
+use std::convert::TryInto;
+use std::ffi::CStr;
+use std::collections::{HashSet, VecDeque};
+
 use webview2::host_object::IDispatch;
 use webview2::*;
 use winapi::shared::windef::*;
+use winapi::um::processthreadsapi::{GetCurrentProcess, SetPriorityClass};
+use winapi::um::winbase::{HIGH_PRIORITY_CLASS, ABOVE_NORMAL_PRIORITY_CLASS};
+use winapi::um::winuser::*;
+use winapi::um::processthreadsapi::*;
+use winapi::um::tlhelp32::*;
+use winapi::um::handleapi::CloseHandle;
+use winapi::shared::minwindef::*;
+use winapi::um::winnt::*;
+use winapi::um::handleapi::INVALID_HANDLE_VALUE;
+use winapi::um::winnt::PROCESS_SET_INFORMATION;
 
 pub type WebView2DataWrapper = Arc<RwLock<Option<WebView2Data>>>;
 
@@ -40,6 +55,81 @@ pub struct InitializeState {
     pub defines: Vec<String>,
 }
 
+pub fn collect_descendant_pids(parent_pid: u32) -> HashSet<u32> {
+    let mut descendants = HashSet::new();
+    let mut queue = VecDeque::new();
+    queue.push_back(parent_pid);
+
+    unsafe {
+        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snapshot == INVALID_HANDLE_VALUE {
+            eprintln!("Failed to take process snapshot");
+            return descendants;
+        }
+
+        let mut entry: PROCESSENTRY32 = std::mem::zeroed();
+        entry.dwSize = std::mem::size_of::<PROCESSENTRY32>() as u32;
+
+        if Process32First(snapshot, &mut entry) == 1 {
+            loop {
+                let parent_match = queue.contains(&entry.th32ParentProcessID);
+                if parent_match && !descendants.contains(&entry.th32ProcessID) {
+                    descendants.insert(entry.th32ProcessID);
+                    queue.push_back(entry.th32ProcessID);
+                }
+
+                if Process32Next(snapshot, &mut entry) == FALSE {
+                    break;
+                }
+            }
+        }
+
+        CloseHandle(snapshot);
+    }
+
+    descendants
+}
+
+pub fn boost_webview2_children_recursive(parent_pid: u32) {
+    let descendant_pids = collect_descendant_pids(parent_pid);
+
+    unsafe {
+        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snapshot == INVALID_HANDLE_VALUE {
+            eprintln!("Failed to take process snapshot");
+            return;
+        }
+
+        let mut entry: PROCESSENTRY32 = std::mem::zeroed();
+        entry.dwSize = std::mem::size_of::<PROCESSENTRY32>() as u32;
+
+        if Process32First(snapshot, &mut entry) == TRUE {
+            loop {
+                if descendant_pids.contains(&entry.th32ProcessID) {
+                    let exe_file_cstr = CStr::from_ptr(entry.szExeFile.as_ptr());
+                    let exe_file = exe_file_cstr.to_string_lossy().to_string();
+
+                    if exe_file.to_lowercase().contains("webview2") {
+                        let h_process = OpenProcess(PROCESS_SET_INFORMATION, 0, entry.th32ProcessID);
+                        if !h_process.is_null() {
+                            if SetPriorityClass(h_process, HIGH_PRIORITY_CLASS) == 0 {
+                                eprintln!("Failed to set priority for PID {}", entry.th32ProcessID);
+                            } else {
+                                println!("Boosted WebView2 process PID {} to HIGH_PRIORITY_CLASS", entry.th32ProcessID);
+                            }
+                            CloseHandle(h_process);
+                        }
+                    }
+                }
+                if Process32Next(snapshot, &mut entry) == FALSE {
+                    break;
+                }
+            }
+        }
+
+        CloseHandle(snapshot);
+    }
+}
 pub fn setup_controller(controller: Controller) {
     controller.put_is_visible(false).expect("put_is_visible");
 
@@ -105,6 +195,14 @@ pub fn setup_controller(controller: Controller) {
         Ok(())
     })
     .ok();
+
+    let pid = std::process::id().try_into().unwrap();
+    std::thread::spawn(move || {
+        for _ in 0..3 {
+            boost_webview2_children_recursive(pid);
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+    });
 }
 
 pub fn inject_defines<Fn>(w: WebView, mut names: Vec<String>, cb: Fn)
@@ -307,6 +405,14 @@ pub unsafe extern "C" fn webview2_open(
             Ok(())
         })
     });
+
+    let pid = std::process::id().try_into().unwrap();
+    std::thread::spawn(move || {
+        for _ in 0..3 {
+            boost_webview2_children_recursive(pid);
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+    });    
 
     if let Err(e) = res {
         eprintln!("webview2_open: {:?}", e);
