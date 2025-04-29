@@ -373,7 +373,7 @@ pub unsafe extern "C" fn webview2_update_position2(
     w: i32,
     h: i32,
     ref_width: i32,
-    ref_height: i32
+    ref_height: i32,
 ) {
     let r = RECT {
         left,
@@ -387,10 +387,14 @@ pub unsafe extern "C" fn webview2_update_position2(
             return;
         }
 
-        let hmonitor = unsafe { MonitorFromWindow(
-                                    data.controller
-                                        .get_parent_window()
-                                        .expect("get_host_window"), MONITOR_DEFAULTTONEAREST)};
+        let hmonitor = unsafe {
+            MonitorFromWindow(
+                data.controller
+                    .get_parent_window()
+                    .expect("get_host_window"),
+                MONITOR_DEFAULTTONEAREST,
+            )
+        };
         let mut dpi_x = 0u32;
         let mut dpi_y = 0u32;
         let hr = unsafe { GetDpiForMonitor(hmonitor, MDT_EFFECTIVE_DPI, &mut dpi_x, &mut dpi_y) };
@@ -398,7 +402,7 @@ pub unsafe extern "C" fn webview2_update_position2(
         if hr != S_OK {
             return;
         }
-    
+
         if let Some((rect, zoom)) = util::calculate_bounds(r, ref_width, ref_height, dpi_x) {
             data.controller
                 .set_bounds_and_zoom_factor(rect, zoom)
