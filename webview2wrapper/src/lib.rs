@@ -3,7 +3,11 @@ use std::sync::mpsc;
 use std::sync::{Arc, RwLock};
 use webview2::host_object::IDispatch;
 use webview2::*;
+
 use winapi::shared::windef::*;
+use winapi::shared::winerror::S_OK;
+use winapi::um::shellscalingapi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
+use winapi::um::winuser::{MonitorFromWindow, MONITOR_DEFAULTTONEAREST};
 
 pub type WebView2DataWrapper = Arc<RwLock<Option<WebView2Data>>>;
 
@@ -383,15 +387,23 @@ pub unsafe extern "C" fn webview2_update_position2(
             return;
         }
 
-        let dpi = unsafe {
-            winapi::um::winuser::GetDpiForWindow(
+        let hmonitor = unsafe {
+            MonitorFromWindow(
                 data.controller
                     .get_parent_window()
                     .expect("get_host_window"),
+                MONITOR_DEFAULTTONEAREST,
             )
         };
+        let mut dpi_x = 0u32;
+        let mut dpi_y = 0u32;
+        let hr = unsafe { GetDpiForMonitor(hmonitor, MDT_EFFECTIVE_DPI, &mut dpi_x, &mut dpi_y) };
 
-        if let Some((rect, zoom)) = util::calculate_bounds(r, ref_width, ref_height, dpi) {
+        if hr != S_OK {
+            return;
+        }
+
+        if let Some((rect, zoom)) = util::calculate_bounds(r, ref_width, ref_height, dpi_x) {
             data.controller
                 .set_bounds_and_zoom_factor(rect, zoom)
                 .expect("set_bonds_and_zoom_factor");
