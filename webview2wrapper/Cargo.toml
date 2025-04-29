@@ -9,6 +9,7 @@ winapi = { version = "0.3.8", features = [
     # For SHCreateMemStream.
     "shellapi",
     "winerror",
+    "shellscalingapi"
 ] }
 webview2 = { path = "../webview2" }
 winit = "0.24.0"
