@@ -9,6 +9,9 @@ use winapi::shared::winerror::S_OK;
 use winapi::um::shellscalingapi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
 use winapi::um::winuser::{MonitorFromWindow, MONITOR_DEFAULTTONEAREST};
 
+use winreg::enums::*;
+use winreg::RegKey;
+
 pub type WebView2DataWrapper = Arc<RwLock<Option<WebView2Data>>>;
 
 pub struct WebView2Data {
@@ -365,6 +368,13 @@ pub unsafe extern "C" fn webview2_update_position(ptr: usize, left: i32, top: i3
     });
 }
 
+fn get_text_scale_factor() -> Result<u32> {
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let accessibility = hkcu.open_subkey("Software\\Microsoft\\Accessibility")?;
+    let scale: u32 = accessibility.get_value("TextScaleFactor")?;
+    Ok(scale)
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn webview2_update_position2(
     ptr: usize,
@@ -399,11 +409,14 @@ pub unsafe extern "C" fn webview2_update_position2(
         let mut dpi_y = 0u32;
         let hr = unsafe { GetDpiForMonitor(hmonitor, MDT_EFFECTIVE_DPI, &mut dpi_x, &mut dpi_y) };
 
+        let scale_factor = get_text_scale_factor().unwrap_or(100);
+        let dpi = (dpi_x as f64 * scale_factor as f64 / 100.0).round() as u32;
+
         if hr != S_OK {
             return;
         }
 
-        if let Some((rect, zoom)) = util::calculate_bounds(r, ref_width, ref_height, dpi_x) {
+        if let Some((rect, zoom)) = util::calculate_bounds(r, ref_width, ref_height, dpi) {
             data.controller
                 .set_bounds_and_zoom_factor(rect, zoom)
                 .expect("set_bonds_and_zoom_factor");
